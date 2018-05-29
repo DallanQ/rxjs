@@ -7,10 +7,25 @@
         "allowJs": true,
         "target": "es5",
         "module": "commonjs",
-        "outDir": "../spec-js"
+        "moduleResolution": "node",
+        "outDir": "../spec-js",
+        "lib": [
+            "es5",
+            "es2015.core",
+            "es2015.collection",
+            "es2015.iterable",
+            "es2015.promise",
+            "dom"
+        ]
     },
     "formatCodeOptions": {
         "indentSize": 2,
         "tabSize": 2
-    }
+    },
+    "exclude": [
+        "support/mocha-setup-node.js",
+        "support/mocha.sauce.gruntfile.js",
+        "support/mocha.sauce.runner.js",
+        "support/webpack.mocha.config.js"
+    ]
 }

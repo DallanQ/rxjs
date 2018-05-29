@@ -1,7 +1,29 @@
-declare const {hot, cold, expectObservable, expectSubscriptions};
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 /** @test {pairwise} */
 describe('Observable.prototype.pairwise', () => {
+  asDiagram('pairwise')('should group consecutive emissions as arrays of two', () => {
+    const e1 =   hot('--a--b-c----d--e---|');
+    const expected = '-----u-v----w--x---|';
+
+    const values = {
+      u: ['a', 'b'],
+      v: ['b', 'c'],
+      w: ['c', 'd'],
+      x: ['d', 'e']
+    };
+
+    const source = (<any>e1).pairwise();
+
+    expectObservable(source).toBe(expected, values);
+  });
+
   it('should pairwise things', () => {
     const e1 = hot('--a--^--b--c--d--e--f--g--|');
     const e1subs =      '^                    !';

@@ -1,5 +1,10 @@
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, expectObservable, expectSubscriptions};
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
@@ -24,6 +29,20 @@ describe('Observable.race', () => {
     const expected = '---a-----b-----c----|';
 
     const result = Observable.race(e1, e2);
+
+    expectObservable(result).toBe(expected);
+    expectSubscriptions(e1.subscriptions).toBe(e1subs);
+    expectSubscriptions(e2.subscriptions).toBe(e2subs);
+  });
+
+  it('should race with array of observable', () => {
+    const e1 =  cold('---a-----b-----c----|');
+    const e1subs =   '^                   !';
+    const e2 =  cold('------x-----y-----z----|');
+    const e2subs =   '^  !';
+    const expected = '---a-----b-----c----|';
+
+    const result = Observable.race([e1, e2]);
 
     expectObservable(result).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);

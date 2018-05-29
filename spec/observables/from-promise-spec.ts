@@ -1,6 +1,6 @@
-import {expect} from 'chai';
+import { expect } from 'chai';
 import * as sinon from 'sinon';
-import * as Rx from '../../dist/cjs/Rx';
+import * as Rx from '../../dist/package/Rx';
 
 declare const process: any;
 const Observable = Rx.Observable;
@@ -70,6 +70,25 @@ describe('Observable.fromPromise', () => {
     }, () => {
       done(new Error('should not be called'));
     });
+  });
+
+  it('should accept PromiseLike object for interoperability', (done: MochaDone) => {
+    class CustomPromise<T> implements PromiseLike<T> {
+      constructor(private promise: PromiseLike<T>) {
+      }
+      then(onFulfilled?, onRejected?): PromiseLike<T> {
+        return new CustomPromise(this.promise.then(onFulfilled, onRejected));
+      };
+    }
+    const promise = new CustomPromise(Promise.resolve(42));
+    Observable.fromPromise(promise)
+      .subscribe(
+        (x: number) => { expect(x).to.equal(42); },
+        () => {
+          done(new Error('should not be called'));
+        }, () => {
+          done();
+        });
   });
 
   it('should emit a value from a resolved promise on a separate scheduler', (done: MochaDone) => {
@@ -157,15 +176,21 @@ describe('Observable.fromPromise', () => {
               done(new Error('should not be called'));
             });
     });
-  } else if (typeof window === 'object' && Object.prototype.toString.call(window) === '[object global]') {
+  } else if (typeof window === 'object' &&
+    (Object.prototype.toString.call(window) === '[object global]' || Object.prototype.toString.call(window) === '[object Window]')) {
     it('should globally throw unhandled errors on window', (done: MochaDone) => {
+      const expected = ['Uncaught fail', 'fail', 'Script error.', 'uncaught exception: fail'];
+      const current = window.onerror;
+      window.onerror = null;
+
       let invoked = false;
       function onException(e) {
         if (invoked) {
           return;
         }
         invoked = true;
-        expect(e).to.equal('Uncaught fail');
+        expect(expected).to.contain(e);
+        window.onerror = current;
         done();
       }
 

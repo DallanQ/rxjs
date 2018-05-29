@@ -1,6 +1,6 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-import {ScalarObservable} from '../../dist/cjs/observable/ScalarObservable';
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import { ScalarObservable } from '../../dist/package/observable/ScalarObservable';
 
 declare const rxTestScheduler: Rx.TestScheduler;
 
@@ -21,7 +21,17 @@ describe('ScalarObservable', () => {
     const s = new ScalarObservable(1, rxTestScheduler);
     const subscriber = new Rx.Subscriber();
     s.subscribe(subscriber);
-    subscriber.isUnsubscribed = true;
+    subscriber.closed = true;
     rxTestScheduler.flush();
+  });
+
+  it('should set `_isScalar` to true when NOT called with a Scheduler', () => {
+    const s = new ScalarObservable(1);
+    expect(s._isScalar).to.be.true;
+  });
+
+  it('should set `_isScalar` to false when called with a Scheduler', () => {
+    const s = new ScalarObservable(1, rxTestScheduler);
+    expect(s._isScalar).to.be.false;
   });
 });

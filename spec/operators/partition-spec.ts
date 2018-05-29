@@ -1,6 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
@@ -36,6 +42,34 @@ describe('Observable.prototype.partition', () => {
     }
 
     expectObservableArray(e1.partition(predicate), expected);
+    expectSubscriptions(e1.subscriptions).toBe([e1subs, e1subs]);
+  });
+
+  it('should partition an observable into two using a predicate that takes an index', () => {
+    const e1 =    hot('--a-b---a------d--e---c--|');
+    const e1subs =    '^                        !';
+    const expected = ['--a-----a---------e------|',
+                      '----b----------d------c--|'];
+
+    function predicate(value, index: number) {
+      return index % 2 === 0;
+    }
+
+    expectObservableArray(e1.partition(predicate), expected);
+    expectSubscriptions(e1.subscriptions).toBe([e1subs, e1subs]);
+  });
+
+  it('should partition an observable into two using a predicate and thisArg', () => {
+    const e1 =    hot('--a-b---a------d--a---c--|');
+    const e1subs =    '^                        !';
+    const expected = ['--a-----a---------a------|',
+                    '----b----------d------c--|'];
+
+    function predicate(x) {
+      return x === this.value;
+    }
+
+    expectObservableArray(e1.partition(predicate, {value: 'a'}), expected);
     expectSubscriptions(e1.subscriptions).toBe([e1subs, e1subs]);
   });
 
@@ -224,5 +258,15 @@ describe('Observable.prototype.partition', () => {
   it('should throw without predicate', () => {
     const e1 = hot('--a-b---a------d----');
     expect(e1.partition).to.throw();
+  });
+
+  it('should accept thisArg', () => {
+    const thisArg = {};
+
+    Observable.of(1).partition(function (value: number) {
+      expect(this).to.deep.equal(thisArg);
+      return true;
+    }, thisArg)
+      .forEach((observable: Rx.Observable<number>) => observable.subscribe());
   });
 });

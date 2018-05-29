@@ -1,6 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import { lowerCaseO } from '../helpers/test-helper';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 declare const rxTestScheduler: Rx.TestScheduler;
 const Observable = Rx.Observable;
@@ -205,6 +211,36 @@ describe('Observable.merge(...observables)', () => {
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
     expectSubscriptions(e2.subscriptions).toBe(e2subs);
   });
+
+  it('should merge single lowerCaseO into RxJS Observable', () => {
+    const e1 = lowerCaseO('a', 'b', 'c');
+
+    const result = Observable.merge(e1);
+
+    expect(result).to.be.instanceof(Observable);
+    expectObservable(result).toBe('(abc|)');
+  });
+
+  it('should merge two lowerCaseO into RxJS Observable', () => {
+    const e1 = lowerCaseO('a', 'b', 'c');
+    const e2 = lowerCaseO('d', 'e', 'f');
+
+    const result = Observable.merge(e1, e2);
+
+    expect(result).to.be.instanceof(Observable);
+    expectObservable(result).toBe('(abcdef|)');
+  });
+});
+
+describe('Observable.merge(...observables, Scheduler)', () => {
+  it('should merge single lowerCaseO into RxJS Observable', () => {
+    const e1 = lowerCaseO('a', 'b', 'c');
+
+    const result = Observable.merge(e1, rxTestScheduler);
+
+    expect(result).to.be.instanceof(Observable);
+    expectObservable(result).toBe('(abc|)');
+  });
 });
 
 describe('Observable.merge(...observables, Scheduler, number)', () => {
@@ -230,5 +266,25 @@ describe('Observable.merge(...observables, Scheduler, number)', () => {
     const e3 =  cold(            '---x---y---z---|');
     const expected = '-d-a-e-b-f-c---x---y---z---|';
     expectObservable(Observable.merge(e1, e2, e3, 2, rxTestScheduler)).toBe(expected);
+  });
+
+  it('should use the scheduler even when one Observable is merged', (done: MochaDone) => {
+    let e1Subscribed = false;
+    const e1 = Observable.defer(() => {
+      e1Subscribed = true;
+      return Observable.of('a');
+    });
+
+    Observable
+      .merge(e1, Rx.Scheduler.async)
+      .subscribe({
+        error: done,
+        complete: () => {
+          expect(e1Subscribed).to.be.true;
+          done();
+        }
+      });
+
+    expect(e1Subscribed).to.be.false;
   });
 });

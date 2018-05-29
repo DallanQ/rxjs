@@ -29,17 +29,53 @@ hr {
   border-bottom: 1px solid #ddd;
 }
 
+h1,h2,h3,h4 {
+  padding-top: 10px !important;
+}
+
+body {
+  display: none;
+}
+
+body.light-theme,
+body.dark-theme {
+  display: block;
+}
 /* Top nav bar border bottom */
 .layout-container > header {
+  position: fixed;
   background-color: #333;
-  border-bottom: none;
+  box-sizing: border-box;
+  border-bottom: 0;
+}
+
+body.light-theme.layout-container > header {
+  border-bottom: 1px solid #EAEAEA;
+  background-color: #EFEFEF;
+}
+
+.layout-container > header:before {
+  content: 'RxJS';
+  font-family: 'Signika', 'Roboto', sans-serif;
+  background-image: url('../../manual/asset/Rx_Logo_S.png');
+  width: 150px;
+  height: 40px;
+  color: #EC0C8E;
+  font-size: 20px;
+  background-size: auto 25px;
+  background-repeat: no-repeat;
+  padding-left: 30px;
+  padding-right: 5px;
 }
 
 .layout-container > header a {
   color: #777;
 }
 .layout-container > header a:hover, .layout-container > header a:active {
-  color: #fff;
+  color: #FFF;
+}
+body.light-theme .layout-container > header a:hover, .layout-container > header a:active {
+  color: #EC0C8E;
 }
 
 .layout-container > header > a.repo-url-github {
@@ -47,35 +83,81 @@ hr {
   filter: brightness(20);
 }
 
-.search-box img {
-  -webkit-filter: brightness(1.7);
-  filter: brightness(1.7);
+body.light-theme.layout-container > header > a.repo-url-github {
+  -webkit-filter: brightness(5);
+  filter: brightness(5);
 }
 
 .search-input {
+  color: #FFF;
+  font-size: 14px;
   border-color: #EC0C8E;
-  color: #fff;
 }
+
+body.light-theme .search-input {
+  color: #333;
+}
+
 .search-input-edge {
   background-color: #EC0C8E;
+  display: none;
+}
+
+.search-result li.selected {
+  color: #FFF;
+}
+
+body.light-theme .search-result li.selected {
+  background: transparent !important;
+  color: #EC0C8E;
+}
+
+body.light-theme .search-result li a:hover {
+ background: #ddd;
+  
+}
+
+.search-box img {
+  -webkit-filter: brightness(1.7);
+  filter: brightness(1.7);
+  margin-right: 5px;
 }
 
 /* Navigation side menu */
-.navigation {
-  background-color: #333;
+body.light-theme .navigation, body.dark-theme .navigation {
   box-shadow: none;
   border-right: none;
+  padding: 10px 0;
+  margin-top: 40px;
+  height: calc(100% - 40px);
+  background-color: #333;
+  padding: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.light-theme .navigation {
+  background-color: transparent;
 }
 
 .navigation a {
-  color: #bbb;
+  color: #BBB;
 }
+body.light-theme .navigation a {
+  color: #777;
+}
+
 .navigation a:hover {
-  color: #fff;
+  color: #FFF;
+}
+body.light-theme .navigation a:hover {
+  color: #EC0C8E;
 }
 
 .navigation .manual-toc-title {
   padding: 0.5em;
+}
+body.light-theme .navigation .manual-toc-title {
+  border-radius: 3px;
 }
 
 .manual-dot {
@@ -127,6 +209,14 @@ a:hover {
   margin-right: 0.3em;
 }
 
+.content {
+  padding: 20px 60px 20px 30px;
+  overflow-y: scroll;
+  height: calc(100vh - 40px);
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+
 .content .detail {
   font-size: 16px;
 }
@@ -142,6 +232,8 @@ a:hover {
 .github-markdown pre > code {
   line-height: 1.5em;
   margin: 22px 0;
+  padding: 10px;
+  border-radius: 3px;
 }
 
 .github-markdown ol {
@@ -267,4 +359,63 @@ table.params tbody tr:last-child td {
 
 .decision-tree-widget ul h4.decision {
   margin: 10px 0;
+}
+
+.footer {
+  position: fixed;
+  top: calc(100% - 28px);
+  margin: 0;
+  width: auto;
+  padding: 5px;
+  background: #FAFAFA;
+  border: 1px solid #EAEAEA;
+  right: 15px;
+  border-top-left-radius: 3px;
+  border-top-right-radius: 3px;
+}
+
+/* CODE */
+code .kwd {
+  color: #a71d5d;
+}
+
+code .str {
+  color: #df5000;
+}
+
+code .typ {
+  color: #795da3;
+}
+
+code .lit {
+  color: #0086b3;
+}
+
+/* THEMES */
+.theme-toggler {
+  display: inline-block;
+  line-height: 30px;
+  margin: 5px;
+  color: #777;
+  border-left: 3px solid #444;
+}
+
+body.light-theme .theme-toggler {
+  border-left: 3px solid #CCC;
+}
+
+.theme-selector {
+  font-weight: normal;
+  cursor: pointer;
+  padding: 0 5px;
+}
+
+.theme-selector:first-child {
+  margin: 0 10px;
+}
+
+body.dark-theme .theme-selector.dark,
+body.light-theme .theme-selector.light {
+  font-weight: bold;
+  border-bottom: 1px solid #B7178C;
 }

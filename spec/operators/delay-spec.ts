@@ -1,6 +1,14 @@
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, asDiagram, cold, time, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as sinon from 'sinon';
+import * as Rx from '../../dist/package/Rx';
+import { delay, repeatWhen, skip, take, tap } from '../../dist/package/operators';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
 
+declare const { asDiagram, time };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 declare const rxTestScheduler: Rx.TestScheduler;
 const Observable = Rx.Observable;
 
@@ -139,6 +147,35 @@ describe('Observable.prototype.delay', () => {
     const expected = '-';
 
     const result = e1.delay(t, rxTestScheduler);
+
+    expectObservable(result).toBe(expected);
+  });
+
+  it('should unsubscribe scheduled actions after execution', () => {
+    let subscribeSpy: any = null;
+    const counts: number[] = [];
+
+    const e1 =       cold('a|');
+    const expected =      '--a-(a|)';
+    const duration = time('-|');
+    const result = e1.pipe(
+      repeatWhen(notifications => {
+        const delayed = notifications.pipe(delay(duration, rxTestScheduler));
+        subscribeSpy = sinon.spy(delayed['source'], 'subscribe');
+        return delayed;
+      }),
+      skip(1),
+      take(2),
+      tap({
+        next() {
+          const [[subscriber]] = subscribeSpy.args;
+          counts.push(subscriber._subscriptions.length);
+        },
+        complete() {
+          expect(counts).to.deep.equal([1, 1]);
+        }
+      })
+    );
 
     expectObservable(result).toBe(expected);
   });

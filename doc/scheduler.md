@@ -6,7 +6,7 @@
 - **A Scheduler is an execution context.** It denotes where and when the task is executed (e.g. immediately, or in another callback mechanism such as setTimeout or process.nextTick, or the animation frame).
 - **A Scheduler has a (virtual) clock.** It provides a notion of "time" by a getter method `now()` on the scheduler. Tasks being scheduled on a particular scheduler will adhere only to the time denoted by that clock.
 
-<span class="informal">A Scheduler lets you define in what execution context will an Observable delivers notifications to its Observer.</span>
+<span class="informal">A Scheduler lets you define in what execution context will an Observable deliver notifications to its Observer.</span>
 
 In the example below, we take the usual simple Observable that emits values `1`, `2`, `3` synchronously, and use the operator `observeOn` to specify the `async` scheduler to use for delivering those values.
 
@@ -39,7 +39,7 @@ got value 3
 done
 ```
 
-Notice how the notifications `got value...` were delivered after `just before subscribe`, which is different to the default behavior we have seen so far. This is because `observeOn(Rx.Scheduler.async)` introduces a proxy Observer between `Observable.create` and the final Observer. Let's rename some identifiers to make that distinction obvious in the example code:
+Notice how the notifications `got value...` were delivered after `just after subscribe`, which is different to the default behavior we have seen so far. This is because `observeOn(Rx.Scheduler.async)` introduces a proxy Observer between `Observable.create` and the final Observer. Let's rename some identifiers to make that distinction obvious in the example code:
 
 ```js
 var observable = Rx.Observable.create(function (proxyObserver) {
@@ -96,9 +96,9 @@ The `async` Scheduler is one of the built-in schedulers provided by RxJS. Each o
 
 You may have already used schedulers in your RxJS code without explicitly stating the type of schedulers to be used. This is because all Observable operators that deal with concurrency have optional schedulers. If you do not provide the scheduler, RxJS will pick a default scheduler by using the principle of least concurrency. This means that the scheduler which introduces the least amount of concurrency that satisfies the needs of the operator is chosen. For example, for operators returning an observable with a finite and small number of messages, RxJS uses no Scheduler, i.e. `null` or `undefined`.  For operators returning a potentially large or infinite number of messages, `queue` Scheduler is used. For operators which use timers, `async` is used.
 
-Because RxJS uses the least concurrency scheduler, you can pick a different scheduler if you want to introduce concurrency for performance purpose.  To specify a particular scheduler, you can use those operator methods that take a scheduler, e.g., `fromArray([10, 20, 30], Rx.Scheduler.async)`.
+Because RxJS uses the least concurrency scheduler, you can pick a different scheduler if you want to introduce concurrency for performance purpose.  To specify a particular scheduler, you can use those operator methods that take a scheduler, e.g., `from([10, 20, 30], Rx.Scheduler.async)`.
 
-**Static creation operators usually take a Scheduler as argument.** For instance, `fromArray(array, scheduler)` lets you specify the Scheduler to use when delivering each notification converted from the `array`. It is usually the last argument to the operator. The following static creation operators take a Scheduler argument:
+**Static creation operators usually take a Scheduler as argument.** For instance, `from(array, scheduler)` lets you specify the Scheduler to use when delivering each notification converted from the `array`. It is usually the last argument to the operator. The following static creation operators take a Scheduler argument:
 
 - `bindCallback`
 - `bindNodeCallback`
@@ -106,7 +106,6 @@ Because RxJS uses the least concurrency scheduler, you can pick a different sche
 - `concat`
 - `empty`
 - `from`
-- `fromArray`
 - `fromPromise`
 - `interval`
 - `merge`

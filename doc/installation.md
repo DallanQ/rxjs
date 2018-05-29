@@ -1,7 +1,7 @@
 ## ES6 via npm
 
 ```none
-npm install rxjs-es
+npm install rxjs
 ```
 
 To import the entire core set of functionality:
@@ -14,20 +14,24 @@ Rx.Observable.of(1,2,3)
 
 To import only what you need by patching (this is useful for size-sensitive bundling):
 
-```js
-import {Observable} from 'rxjs/Observable';
+```js 
+import { Observable} from 'rxjs/Observable';
+import 'rxjs/add/observable/of';
 import 'rxjs/add/operator/map';
 
 Observable.of(1,2,3).map(x => x + '!!!'); // etc
 ```
 
-To import what you need and use it with ES next function bind (best overall method, if possible):
+To import what you need and use it with proposed [bind operator](https://github.com/tc39/proposal-bind-operator):
+
+> Note: This additional syntax requires [transpiler support](http://babeljs.io/docs/plugins/transform-function-bind/) and this syntax may be completely withdrawn from TC39 without notice! Use at your own risk.
 
 ```js
-import {Observable} from 'rxjs/Observable';
-import {map} from 'rxjs/operator/map';
+import { Observable } from 'rxjs/Observable';
+import { of } from 'rxjs/observable/of';
+import { map } from 'rxjs/operator/map';
 
-Observable.of(1,2,3)::map(x => x + '!!!'); // etc
+Observable::of(1,2,3)::map(x => x + '!!!'); // etc
 ```
 
 ## CommonJS via npm
@@ -49,6 +53,7 @@ Import only what you need and patch Observable (this is useful in size-sensitive
 ```js
 var Observable = require('rxjs/Observable').Observable;
 // patch Observable with appropriate methods
+require('rxjs/add/observable/of');
 require('rxjs/add/operator/map');
 
 Observable.of(1,2,3).map(function (x) { return x + '!!!'; }); // etc
@@ -57,27 +62,25 @@ Observable.of(1,2,3).map(function (x) { return x + '!!!'; }); // etc
 Import operators and use them _manually_ you can do the following (this is also useful for bundling):
 
 ```js
-var Observable = require('rxjs/Observable').Observable;
+var of = require('rxjs/observable/of').of;
 var map = require('rxjs/operator/map').map;
 
-map.call(Observable.of(1,2,3), function (x) { return x + '!!!'; });
+map.call(of(1,2,3), function (x) { return x + '!!!'; });
 ```
 
 You can also use the above method to build your own Observable and export it from your own module.
 
 ### CommonJS with TypeScript
-If you recieve an error like `error TS2304: Cannot find name 'Symbol'` or `error TS2304: Cannot find name 'Iterable'` when using RxJS you may need to install a supplemental set of typings.  This small set of interfaces allows RxJS to target ES6, while still allowing the TypeScript compiler to target ES5.
+If you recieve an error like `error TS2304: Cannot find name 'Promise'` or `error TS2304: Cannot find name 'Iterable'` when using RxJS you may need to install a supplemental set of typings.
 
 1. For [`typings`](https://github.com/typings/typings) users:
 
-    `typings install rxjs-symbol-typings`
-    
-2. If you're not using typings the interfaces can be copied from [/spec/es5.d.ts](https://github.com/ReactiveX/rxjs/blob/master/spec/es5.d.ts) or from the [typings repo](https://github.com/david-driscoll/rxjs-symbol-typings/blob/master/rxjs-symbol-shim.d.ts).
+    `typings install es6-shim --ambient`
 
-3. Change your `tsconfig.json` to target `es6` or `es2015`.
-   
-   Keep in mind that targeting ES6 may have unintended consequnces and allow you to use features that may not exist on your target platform or browser.  In this case it is recommended to use another compiler such as [babel](http://babeljs.io/) in your compile pipeline to run after the TypeScript compiler.  
-    
+2. If you're not using typings the interfaces can be copied from [/es6-shim/es6-shim.d.ts](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/es6-shim/es6-shim.d.ts).
+
+3. Add type definition file included in `tsconfig.json` or CLI argument.
+
 ## All Module Types (CJS/ES6/AMD/TypeScript) via npm
 
 To install this library via [npm](https://www.npmjs.org) **version 3**, use the following command:
@@ -94,7 +97,11 @@ npm install @reactivex/rxjs@5.0.0-beta.1
 
 ## CDN
 
-For CDN, you can use [npmcdn](https://npmcdn.com). Just replace `version` with the current
+For CDN, you can use [unpkg](https://unpkg.com). Just replace `version` with the current
 version on the link below:
 
-https://npmcdn.com/@reactivex/rxjs@version/dist/global/Rx.umd.js
+For RxJS 5.0.0-beta.1 through beta.11:
+https://unpkg.com/@reactivex/rxjs@version/dist/global/Rx.umd.js
+
+For RxJS 5.0.0-beta.12 and higher:
+https://unpkg.com/@reactivex/rxjs@version/dist/global/Rx.js

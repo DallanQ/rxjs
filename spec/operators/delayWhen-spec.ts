@@ -1,6 +1,12 @@
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+import { expect } from 'chai';
 
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 declare const rxTestScheduler: Rx.TestScheduler;
 
 /** @test {delayWhen} */
@@ -10,11 +16,11 @@ describe('Observable.prototype.delayWhen', () => {
     const expected =      '-----a------c----(b|)';
     const subs =          '^                !';
     const selector = [cold(  '--x--|'),
-                    cold(      '----------x-|'),
-                    cold(          '-x--|')];
+                      cold(      '----------(x|)'),
+                      cold(          '-x--|')];
     const selectorSubs = ['   ^ !            ',
-                        '       ^         !',
-                        '           ^!     '];
+                          '       ^         !',
+                          '           ^!     '];
 
     let idx = 0;
     function durationSelector(x) {
@@ -209,5 +215,17 @@ describe('Observable.prototype.delayWhen', () => {
     expectSubscriptions(e1.subscriptions).toBe([]);
     expectSubscriptions(selector.subscriptions).toBe([]);
     expectSubscriptions(subDelay.subscriptions).toBe(subDelaySub);
+  });
+
+  it('should complete when duration selector returns synchronous observable', () => {
+    let next: boolean = false;
+    let complete: boolean = false;
+
+    Rx.Observable.of(1)
+      .delayWhen(() => Rx.Observable.of(2))
+      .subscribe(() => next = true, null, () => complete = true);
+
+    expect(next).to.be.true;
+    expect(complete).to.be.true;
   });
 });

@@ -1,6 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 declare const Symbol: any;
 const Observable = Rx.Observable;
@@ -716,5 +722,12 @@ describe('Observable.prototype.zipAll', () => {
     expectObservable(r, unsub).toBe(expected, values);
     expectSubscriptions(a.subscriptions).toBe(asubs);
     expectSubscriptions(b.subscriptions).toBe(bsubs);
+  });
+
+  it('should complete when empty source', () => {
+    const source = hot('|');
+    const expected =   '|';
+
+    expectObservable(source.zipAll()).toBe(expected);
   });
 });

@@ -1,5 +1,5 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
 
 const { Observable, UnsubscriptionError } = Rx;
 
@@ -20,8 +20,8 @@ describe('UnsubscriptionError', () => {
     } catch (err) {
       expect(err instanceof UnsubscriptionError).to.equal(true);
       expect(err.message).to.equal(`2 errors occurred during unsubscription:
-1) ${err1}
-2) ${err2}`);
+  1) ${err1}
+  2) ${err2}`);
       expect(err.name).to.equal('UnsubscriptionError');
     }
   });

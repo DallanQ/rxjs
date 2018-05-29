@@ -1,6 +1,13 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const type;
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
@@ -18,9 +25,12 @@ describe('Observable.prototype.publishBehavior', () => {
     published.connect();
   });
 
-  it('should return a ConnectableObservable', () => {
+  it('should return a ConnectableObservable-ish', () => {
     const source = Observable.of(1).publishBehavior(1);
-    expect(source instanceof Rx.ConnectableObservable).to.be.true;
+    expect(typeof (<any> source)._subscribe === 'function').to.be.true;
+    expect(typeof (<any> source).getSubject === 'function').to.be.true;
+    expect(typeof source.connect === 'function').to.be.true;
+    expect(typeof source.refCount === 'function').to.be.true;
   });
 
   it('should only emit default value if connect is not called, despite subscriptions', () => {
@@ -31,33 +41,6 @@ describe('Observable.prototype.publishBehavior', () => {
 
     expectObservable(published).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(sourceSubs);
-  });
-
-  it('should follow the RxJS 4 behavior and NOT allow you to reconnect by subscribing again', (done: MochaDone) => {
-    const expected = [0, 1, 2, 3, 4];
-    let i = 0;
-
-    const source = Observable.of(1, 2, 3, 4).publishBehavior(0);
-
-    source.subscribe(
-      (x: number) => {
-        expect(x).to.equal(expected[i++]);
-      },
-      (x) => {
-        done(new Error('should not be called'));
-      }, () => {
-        source.subscribe((x: any) => {
-          done(new Error('should not be called'));
-        }, (x) => {
-          done(new Error('should not be called'));
-        }, () => {
-          done();
-        });
-
-        source.connect();
-      });
-
-    expect(() => source.connect()).to.throw(Rx.ObjectUnsubscribedError);
   });
 
   it('should multicast the same values to multiple observers', () => {
@@ -353,5 +336,20 @@ describe('Observable.prototype.publishBehavior', () => {
 
     expect(results).to.deep.equal([]);
     done();
+  });
+
+  type('should infer the type', () => {
+    /* tslint:disable:no-unused-variable */
+    const source = Rx.Observable.of<number>(1, 2, 3);
+    const result: Rx.ConnectableObservable<number> = source.publishBehavior(0);
+    /* tslint:enable:no-unused-variable */
+  });
+
+  type('should infer the type for the pipeable operator', () => {
+    /* tslint:disable:no-unused-variable */
+    const source = Rx.Observable.of<number>(1, 2, 3);
+    // TODO: https://github.com/ReactiveX/rxjs/issues/2972
+    const result: Rx.ConnectableObservable<number> = Rx.operators.publishBehavior(0)(source);
+    /* tslint:enable:no-unused-variable */
   });
 });

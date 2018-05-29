@@ -6,9 +6,9 @@ RxJS is mostly useful for its *operators*, even though the Observable is the fou
 
 Operators are **methods** on the Observable type, such as `.map(...)`, `.filter(...)`, `.merge(...)`, etc. When called, they do not *change* the existing Observable instance. Instead, they return a *new* Observable, whose subscription logic is based on the first Observable.
 
-<span class="informal">An Operator is a function take creates a new Observable based on the current Observable. This is a pure operation: the previous Observable stays unmodified.</span>
+<span class="informal">An Operator is a function which creates a new Observable based on the current Observable. This is a pure operation: the previous Observable stays unmodified.</span>
 
-An Operator is essentially a pure function which takes one Observable as input and generates another Observable as output. A subscribe on the output Observable will cause also a subscribe on the input Observable. In the following example, we create a custom operator/function that simply multiplies by 10 each value delivered by the input Observable:
+An Operator is essentially a pure function which takes one Observable as input and generates another Observable as output. Subscribing to the output Observable will also subscribe to the input Observable. In the following example, we create a custom operator function that multiplies each value received from the input Observable by 10:
 
 ```js
 function multiplyByTen(input) {
@@ -113,17 +113,19 @@ There are operators for different purposes, and they may be categorized as: crea
 - `ajax`
 - [`bindCallback`](../class/es6/Observable.js~Observable.html#static-method-bindCallback)
 - [`bindNodeCallback`](../class/es6/Observable.js~Observable.html#static-method-bindNodeCallback)
-- `create`
+- [`create`](../class/es6/Observable.js~Observable.html#static-method-create)
 - [`defer`](../class/es6/Observable.js~Observable.html#static-method-defer)
 - [`empty`](../class/es6/Observable.js~Observable.html#static-method-empty)
 - [`from`](../class/es6/Observable.js~Observable.html#static-method-from)
 - [`fromEvent`](../class/es6/Observable.js~Observable.html#static-method-fromEvent)
 - [`fromEventPattern`](../class/es6/Observable.js~Observable.html#static-method-fromEventPattern)
 - [`fromPromise`](../class/es6/Observable.js~Observable.html#static-method-fromPromise)
+- [`generate`](../class/es6/Observable.js~Observable.html#static-method-generate)
 - [`interval`](../class/es6/Observable.js~Observable.html#static-method-interval)
 - [`never`](../class/es6/Observable.js~Observable.html#static-method-never)
 - [`of`](../class/es6/Observable.js~Observable.html#static-method-of)
-- `repeat`
+- [`repeat`](../class/es6/Observable.js~Observable.html#instance-method-repeat)
+- [`repeatWhen`](../class/es6/Observable.js~Observable.html#instance-method-repeatWhen)
 - [`range`](../class/es6/Observable.js~Observable.html#static-method-range)
 - [`throw`](../class/es6/Observable.js~Observable.html#static-method-throw)
 - [`timer`](../class/es6/Observable.js~Observable.html#static-method-timer)
@@ -176,6 +178,7 @@ There are operators for different purposes, and they may be categorized as: crea
 - [`sampleTime`](../class/es6/Observable.js~Observable.html#instance-method-sampleTime)
 - [`single`](../class/es6/Observable.js~Observable.html#instance-method-single)
 - [`skip`](../class/es6/Observable.js~Observable.html#instance-method-skip)
+- [`skipLast`](../class/es6/Observable.js~Observable.html#instance-method-skipLast)
 - [`skipUntil`](../class/es6/Observable.js~Observable.html#instance-method-skipUntil)
 - [`skipWhile`](../class/es6/Observable.js~Observable.html#instance-method-skipWhile)
 - [`take`](../class/es6/Observable.js~Observable.html#instance-method-take)
@@ -197,7 +200,7 @@ There are operators for different purposes, and they may be categorized as: crea
 - [`mergeAll`](../class/es6/Observable.js~Observable.html#instance-method-mergeAll)
 - [`race`](../class/es6/Observable.js~Observable.html#instance-method-race)
 - [`startWith`](../class/es6/Observable.js~Observable.html#instance-method-startWith)
-- `switch`
+- [`switch`](../class/es6/Observable.js~Observable.html#instance-method-switch)
 - [`withLatestFrom`](../class/es6/Observable.js~Observable.html#instance-method-withLatestFrom)
 - [`zip`](../class/es6/Observable.js~Observable.html#static-method-zip)
 - [`zipAll`](../class/es6/Observable.js~Observable.html#instance-method-zipAll)
@@ -214,13 +217,13 @@ There are operators for different purposes, and they may be categorized as: crea
 
 ### Error Handling Operators
 
-- `catch`
+- [`catch`](../class/es6/Observable.js~Observable.html#instance-method-catch)
 - [`retry`](../class/es6/Observable.js~Observable.html#instance-method-retry)
 - [`retryWhen`](../class/es6/Observable.js~Observable.html#instance-method-retryWhen)
 
 ### Utility Operators
 
-- `do`
+- [`do`](../class/es6/Observable.js~Observable.html#instance-method-do)
 - [`delay`](../class/es6/Observable.js~Observable.html#instance-method-delay)
 - [`delayWhen`](../class/es6/Observable.js~Observable.html#instance-method-delayWhen)
 - [`dematerialize`](../class/es6/Observable.js~Observable.html#instance-method-dematerialize)

@@ -1,6 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
@@ -182,13 +188,15 @@ describe('Observable.prototype.map', () => {
     const values = {a: 5, b: 14, c: 23, d: 32};
 
     let invoked = 0;
-    const foo = 42;
+    const foo = {
+      value: 42
+    };
     const r = a
       .map(function (x: string, index: number) {
         invoked++;
         expect(this).to.equal(foo);
         return (parseInt(x) + 1) + (index * 10);
-      }, 42)
+      }, foo)
       .do(null, null, () => {
         expect(invoked).to.equal(4);
       });

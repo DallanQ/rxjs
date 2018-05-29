@@ -1,7 +1,10 @@
-import {expect} from 'chai';
-import * as Rx from '../dist/cjs/Rx';
+import { expect } from 'chai';
+import * as Rx from '../dist/package/Rx';
+import marbleTestingSignature = require('./helpers/marble-testing'); // tslint:disable-line:no-require-imports
 
-declare const {hot, expectObservable};
+declare const { time };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
 
 const Subject = Rx.Subject;
 const Observable = Rx.Observable;
@@ -19,11 +22,6 @@ describe('Subject', () => {
     subject.next('foo');
     subject.next('bar');
     subject.complete();
-  });
-
-  it('should have the rxSubscriber Symbol', () => {
-    const subject = new Subject();
-    expect(subject[Rx.Symbol.rxSubscriber]).to.be.a('function');
   });
 
   it('should pump values to multiple subscribers', (done: MochaDone) => {
@@ -266,92 +264,18 @@ describe('Subject', () => {
     expect(() => {
       subject.subscribe(
         function (x) { results3.push(x); },
-        function (e) { results3.push('E'); },
-        () => { results3.push('C'); }
+        function (err) {
+          expect(false).to.equal('should not throw error: ' + err.toString());
+        }
       );
-    }).to.throw();
+    }).to.throw(Rx.ObjectUnsubscribedError);
 
     expect(results1).to.deep.equal([1, 2, 3, 4, 5]);
     expect(results2).to.deep.equal([3, 4, 5]);
     expect(results3).to.deep.equal([]);
   });
 
-  it('should allow ad-hoc subscription to be added to itself', () => {
-    const subject = new Subject();
-    const results1 = [];
-    const results2 = [];
-
-    const auxSubject = new Subject();
-
-    const subscription1 = subject.subscribe(
-      function (x) { results1.push(x); },
-      function (e) { results1.push('E'); },
-      () => { results1.push('C'); }
-    );
-    const subscription2 = auxSubject.subscribe(
-      function (x) { results2.push(x); },
-      function (e) { results2.push('E'); },
-      () => { results2.push('C'); }
-    );
-
-    subject.add(subscription2);
-
-    subject.next(1);
-    subject.next(2);
-    subject.next(3);
-    auxSubject.next('a');
-    auxSubject.next('b');
-
-    subscription1.unsubscribe();
-    subject.unsubscribe();
-
-    auxSubject.next('c');
-    auxSubject.next('d');
-
-    expect(results1).to.deep.equal([1, 2, 3]);
-    expect(subscription2.isUnsubscribed).to.be.true;
-    expect(results2).to.deep.equal(['a', 'b']);
-  });
-
-  it('should allow ad-hoc subscription to be removed from itself', () => {
-    const subject = new Subject();
-    const results1 = [];
-    const results2 = [];
-
-    const auxSubject = new Subject();
-
-    const subscription1 = subject.subscribe(
-      function (x) { results1.push(x); },
-      function (e) { results1.push('E'); },
-      () => { results1.push('C'); }
-    );
-    const subscription2 = auxSubject.subscribe(
-      function (x) { results2.push(x); },
-      function (e) { results2.push('E'); },
-      () => { results2.push('C'); }
-    );
-
-    subject.add(subscription2);
-
-    subject.next(1);
-    subject.next(2);
-    subject.next(3);
-    auxSubject.next('a');
-    auxSubject.next('b');
-
-    subject.remove(subscription2);
-    subscription1.unsubscribe();
-    subject.unsubscribe();
-
-    auxSubject.next('c');
-    auxSubject.next('d');
-
-    expect(results1).to.deep.equal([1, 2, 3]);
-    expect(subscription2.isUnsubscribed).to.be.false;
-    expect(results2).to.deep.equal(['a', 'b', 'c', 'd']);
-  });
-
-  it('should not allow values to be nexted after a return', (done: MochaDone) => {
+  it('should not allow values to be nexted after it is unsubscribed', (done: MochaDone) => {
     const subject = new Subject();
     const expected = ['foo'];
 
@@ -360,7 +284,7 @@ describe('Subject', () => {
     });
 
     subject.next('foo');
-    subject.complete();
+    subject.unsubscribe();
     expect(() => subject.next('bar')).to.throw(Rx.ObjectUnsubscribedError);
     done();
   });
@@ -395,17 +319,17 @@ describe('Subject', () => {
     let outputComplete = false;
 
     const destination = {
-      isUnsubscribed: false,
+      closed: false,
       next: function (x) {
         nexts.push(x);
       },
       error: function (err) {
         error = err;
-        this.isUnsubscribed = true;
+        this.closed = true;
       },
       complete: () => {
         complete = true;
-        this.isUnsubscribed = true;
+        this.closed = true;
       }
     };
 
@@ -441,17 +365,17 @@ describe('Subject', () => {
     let outputComplete = false;
 
     const destination = {
-      isUnsubscribed: false,
+      closed: false,
       next: function (x) {
         nexts.push(x);
       },
       error: function (err) {
         error = err;
-        this.isUnsubscribed = true;
+        this.closed = true;
       },
       complete: () => {
         complete = true;
-        this.isUnsubscribed = true;
+        this.closed = true;
       }
     };
 
@@ -528,38 +452,25 @@ describe('Subject', () => {
     }).to.throw(Rx.ObjectUnsubscribedError);
   });
 
-  it('should throw ObjectUnsubscribedError when emit after completed', () => {
+  it('should not next after completed', () => {
     const subject = new Rx.Subject();
+    const results = [];
+    subject.subscribe(x => results.push(x), null, () => results.push('C'));
+    subject.next('a');
     subject.complete();
-
-    expect(() => {
-      subject.next('a');
-    }).to.throw(Rx.ObjectUnsubscribedError);
-
-    expect(() => {
-      subject.error('a');
-    }).to.throw(Rx.ObjectUnsubscribedError);
-
-    expect(() => {
-      subject.complete();
-    }).to.throw(Rx.ObjectUnsubscribedError);
+    subject.next('b');
+    expect(results).to.deep.equal(['a', 'C']);
   });
 
-  it('should throw ObjectUnsubscribedError when emit after error', () => {
+  it('should not next after error', () => {
+    const error = new Error('wut?');
     const subject = new Rx.Subject();
-    subject.error('e');
-
-    expect(() => {
-      subject.next('a');
-    }).to.throw(Rx.ObjectUnsubscribedError);
-
-    expect(() => {
-      subject.error('a');
-    }).to.throw(Rx.ObjectUnsubscribedError);
-
-    expect(() => {
-      subject.complete();
-    }).to.throw(Rx.ObjectUnsubscribedError);
+    const results = [];
+    subject.subscribe(x => results.push(x), (err) => results.push(err));
+    subject.next('a');
+    subject.error(error);
+    subject.next('b');
+    expect(results).to.deep.equal(['a', error]);
   });
 
   describe('asObservable', () => {
@@ -600,7 +511,8 @@ describe('Subject', () => {
       expectObservable(observable).toBe(expected);
     });
 
-    it('should work with inherited subject', (done: MochaDone) => {
+    it('should work with inherited subject', () => {
+      const results = [];
       const subject = new Rx.AsyncSubject();
 
       subject.next(42);
@@ -608,35 +520,33 @@ describe('Subject', () => {
 
       const observable = subject.asObservable();
 
-      const expected = [new Rx.Notification('N', 42),
-                      new Rx.Notification('C')];
+      observable.subscribe(x => results.push(x), null, () => results.push('done'));
 
-      observable.materialize().subscribe((x: Rx.Notification<number>) => {
-        expect(x).to.deep.equal(expected.shift());
-      }, (err: any) => {
-        done(err);
-      }, () => {
-        expect(expected).to.deep.equal([]);
-        done();
-      });
+      expect(results).to.deep.equal([42, 'done']);
     });
+  });
+});
 
-    it('should not eager', () => {
-      let subscribed = false;
+describe('AnonymousSubject', () => {
+  it('should be exposed', () => {
+    expect(Rx.AnonymousSubject).to.be.a('function');
+  });
 
-      const subject = new Rx.Subject(null, new Rx.Observable((observer: Rx.Observer<any>) => {
-        subscribed = true;
-        const subscription = Rx.Observable.of('x').subscribe(observer);
-        return () => {
-          subscription.unsubscribe();
-        };
-      }));
+  it('should not eager', () => {
+    let subscribed = false;
 
-      const observable = subject.asObservable();
-      expect(subscribed).to.be.false;
+    const subject = Rx.Subject.create(null, new Rx.Observable((observer: Rx.Observer<any>) => {
+      subscribed = true;
+      const subscription = Rx.Observable.of('x').subscribe(observer);
+      return () => {
+        subscription.unsubscribe();
+      };
+    }));
 
-      observable.subscribe();
-      expect(subscribed).to.be.true;
-    });
+    const observable = subject.asObservable();
+    expect(subscribed).to.be.false;
+
+    observable.subscribe();
+    expect(subscribed).to.be.true;
   });
 });

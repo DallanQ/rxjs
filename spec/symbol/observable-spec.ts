@@ -1,13 +1,14 @@
-import {expect} from 'chai';
-import {root} from '../../dist/cjs/util/root';
-import {$$observable} from '../../dist/cjs/symbol/observable';
+import { expect } from 'chai';
+import $$symbolObservable from 'symbol-observable';
 
-describe('rxSubscriber symbol', () => {
+import { root } from '../../dist/package/util/root';
+import { getSymbolObservable } from '../../dist/package/symbol/observable';
+
+describe('observable symbol', () => {
   it('should exist in the proper form', () => {
-    const Symbol = root.Symbol;
-    if (typeof Symbol === 'function') {
-      expect(Symbol.observable).exist;
-      expect($$observable).to.equal(Symbol.observable);
+    let $$observable = getSymbolObservable(root);
+    if (root.Symbol && root.Symbol.for) {
+      expect($$observable).to.equal($$symbolObservable);
     } else {
       expect($$observable).to.equal('@@observable');
     }

@@ -1,6 +1,10 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, expectObservable};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { time };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
 
 const BehaviorSubject = Rx.BehaviorSubject;
 const Observable = Rx.Observable;
@@ -8,10 +12,9 @@ const ObjectUnsubscribedError = Rx.ObjectUnsubscribedError;
 
 /** @test {BehaviorSubject} */
 describe('BehaviorSubject', () => {
-  it('should extend Subject', (done: MochaDone) => {
+  it('should extend Subject', () => {
     const subject = new BehaviorSubject(null);
-    expect(subject instanceof Rx.Subject).to.be.true;
-    done();
+    expect(subject).to.be.instanceof(Rx.Subject);
   });
 
   it('should throw if it has received an error and getValue() is called', () => {
@@ -44,7 +47,8 @@ describe('BehaviorSubject', () => {
     const subject = new BehaviorSubject('flibberty');
 
     try {
-      subject.value = 'jibbets';
+      // XXX: escape from readonly restriction for testing.
+      (subject as any).value = 'jibbets';
     } catch (e) {
       //noop
     }
@@ -93,20 +97,23 @@ describe('BehaviorSubject', () => {
     subject.complete();
   });
 
-  it('should not allow values to be nexted after a return', (done: MochaDone) => {
+  it('should not pass values nexted after a complete', () => {
     const subject = new BehaviorSubject('init');
-    const expected = ['init', 'foo'];
+    const results = [];
 
     subject.subscribe((x: string) => {
-      expect(x).to.equal(expected.shift());
-    }, null, done);
+      results.push(x);
+    });
+    expect(results).to.deep.equal(['init']);
 
     subject.next('foo');
-    subject.complete();
+    expect(results).to.deep.equal(['init', 'foo']);
 
-    expect(() => {
-      subject.next('bar');
-    }).to.throw(Rx.ObjectUnsubscribedError);
+    subject.complete();
+    expect(results).to.deep.equal(['init', 'foo']);
+
+    subject.next('bar');
+    expect(results).to.deep.equal(['init', 'foo']);
   });
 
   it('should clean out unsubscribed subscribers', (done: MochaDone) => {

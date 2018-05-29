@@ -1,6 +1,11 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
@@ -86,7 +91,7 @@ describe('Observable.prototype.pluck', () => {
   it('should throw an error if not property is passed', () => {
     expect(() => {
       Observable.of({prop: 1}, {prop: 2}).pluck();
-    }).to.throw(Error, 'List of properties cannot be empty.');
+    }).to.throw(Error, 'list of properties cannot be empty.');
   });
 
   it('should propagate errors from observable that emits only errors', () => {

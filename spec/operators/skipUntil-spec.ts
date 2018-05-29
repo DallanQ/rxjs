@@ -1,5 +1,11 @@
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
@@ -224,7 +230,7 @@ describe('Observable.prototype.skipUntil', () => {
     const expected =  '-';
 
     e1.subscribe((x: string) => {
-      if (x === 'd' && !skip.isUnsubscribed) {
+      if (x === 'd' && !skip.closed) {
         skip.next('x');
       }
 

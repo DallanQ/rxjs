@@ -1,6 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
@@ -184,26 +190,13 @@ describe('Observable.prototype.max', () => {
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
-  it('should handle a constant predicate on observable with many values', () => {
-    const e1 = hot('-x-^-a-b-c-d-e-f-g-|');
-    const e1subs =    '^               !';
-    const expected =  '----------------(w|)';
-
-    const predicate = () => {
-      return 42;
-    };
-
-    expectObservable((<any>e1).max(predicate)).toBe(expected, { w: 42 });
-    expectSubscriptions(e1.subscriptions).toBe(e1subs);
-  });
-
-  it('should handle a predicate on observable with many values', () => {
+  it('should handle a reverse predicate on observable with many values', () => {
     const e1 = hot('-a-^-b--c--d-|', { a: 42, b: -1, c: 0, d: 666 });
     const e1subs =    '^         !';
     const expected =  '----------(w|)';
 
     const predicate = function (x, y) {
-      return Math.min(x, y);
+      return x > y ? -1 : 1;
     };
 
     expectObservable((<any>e1).max(predicate)).toBe(expected, { w: -1 });
@@ -211,15 +204,15 @@ describe('Observable.prototype.max', () => {
   });
 
   it('should handle a predicate for string on observable with many values', () => {
-    const e1 = hot('-1-^-2--3--4-|');
+    const e1 = hot('-a-^-b--c--d-|');
     const e1subs =    '^         !';
     const expected =  '----------(w|)';
 
     const predicate = function (x, y) {
-      return x > y ? x : y;
+      return x > y ? -1 : 1;
     };
 
-    expectObservable((<any>e1).max(predicate)).toBe(expected, { w: '4' });
+    expectObservable((<any>e1).max(predicate)).toBe(expected, { w: 'b' });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 

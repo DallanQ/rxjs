@@ -1,9 +1,12 @@
-import {expect} from 'chai';
+import { expect } from 'chai';
 import * as sinon from 'sinon';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-import {SubscribeOnObservable} from '../../dist/cjs/observable/SubscribeOnObservable';
+import * as Rx from '../../dist/package/Rx';
+import { SubscribeOnObservable } from '../../dist/package/observable/SubscribeOnObservable';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
 
-declare const {hot, expectObservable, expectSubscriptions};
+declare const hot: typeof marbleTestingSignature.hot;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 declare const rxTestScheduler: Rx.TestScheduler;
 
 describe('SubscribeOnObservable', () => {

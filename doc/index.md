@@ -2,7 +2,7 @@
 
 **The ReactiveX library for JavaScript.**
 
-This is a rewrite of [Reactive-Extensions/RxJS](https://github.com/Reactive-Extensions/RxJS) and is intended to supersede it once this is ready. This version's purpose is to have better performance, better modularity, better debuggable call stacks, while staying mostly backwards compatible, with some breaking changes that reduce the API surface.
+RxJS is a library for reactive programming using Observables, to make it easier to compose asynchronous or callback-based code. This project is a rewrite of [Reactive-Extensions/RxJS](https://github.com/Reactive-Extensions/RxJS) with better performance, better modularity, better debuggable call stacks, while staying mostly backwards compatible, with some breaking changes that reduce the API surface.
 
 ### [» Install it](./manual/installation.html)
 *How to install RxJS through npm or CDN*
@@ -10,8 +10,12 @@ This is a rewrite of [Reactive-Extensions/RxJS](https://github.com/Reactive-Exte
 *Read the Manual on Observables, Observer, Subject, etc*
 ### [» Full reference](./identifiers.html)
 *Read detailed documentation on each operator*
+### [» View examples](./manual/tutorial.html)
+*Read our tutorials on using RxJS in real applications*
 
 - - -
+
+### Find the right Operator
 
 <div class="decision-tree-widget"></div>
 

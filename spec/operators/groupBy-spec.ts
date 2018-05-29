@@ -1,10 +1,17 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-import {GroupedObservable} from '../../dist/cjs/operator/groupBy';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import { GroupedObservable } from '../../dist/package/operators/groupBy';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 declare const rxTestScheduler: Rx.TestScheduler;
 const Observable = Rx.Observable;
+const ReplaySubject = Rx.ReplaySubject;
 
 /** @test {groupBy} */
 describe('Observable.prototype.groupBy', () => {
@@ -70,7 +77,7 @@ describe('Observable.prototype.groupBy', () => {
       }, null, done);
   });
 
-  it('should group values with a duration selector', (done: MochaDone) => {
+  it('should group values with a duration selector', () => {
     const expectedGroups = [
       { key: 1, values: [1, 3] },
       { key: 0, values: [2, 4] },
@@ -78,11 +85,37 @@ describe('Observable.prototype.groupBy', () => {
       { key: 0, values: [6] }
     ];
 
+    const resultingGroups = [];
+
     Observable.of(1, 2, 3, 4, 5, 6)
       .groupBy(
         (x: number) => x % 2,
         (x: number) => x,
         (g: any) => g.skip(1))
+      .subscribe((g: any) => {
+        let group = { key: g.key, values: [] };
+
+        g.subscribe((x: any) => {
+          group.values.push(x);
+        });
+
+        resultingGroups.push(group);
+      });
+
+      expect(resultingGroups).to.deep.equal(expectedGroups);
+  });
+
+  it('should group values with a subject selector', (done: MochaDone) => {
+    const expectedGroups = [
+      { key: 1, values: [3] },
+      { key: 0, values: [2] }
+    ];
+
+    Observable.of(1, 2, 3)
+      .groupBy((x: number) => x % 2, null, null, () => new ReplaySubject(1))
+      // Ensure each inner group reaches the destination after the first event
+      // has been next'd to the group
+      .delay(5)
       .subscribe((g: any) => {
         const expectedGroup = expectedGroups.shift();
         expect(g.key).to.equal(expectedGroup.key);
@@ -310,6 +343,34 @@ describe('Observable.prototype.groupBy', () => {
       .map((group: any) => group.key);
 
     expectObservable(source, unsub).toBe(expected, expectedValues);
+    expectSubscriptions(e1.subscriptions).toBe(e1subs);
+  });
+
+  it('should unsubscribe from the source when the outer and inner subscriptions are disposed', () => {
+    const values = {
+      a: '  foo',
+      b: ' FoO ',
+      c: 'baR  ',
+      d: 'foO ',
+      e: ' Baz   ',
+      f: '  qux ',
+      g: '   bar',
+      h: ' BAR  ',
+      i: 'FOO ',
+      j: 'baz  ',
+      k: ' bAZ ',
+      l: '    fOo    '
+    };
+    const e1 = hot('-1--2--^-a-b-c-d-e-f-g-h-i-j-k-l-|', values);
+    const e1subs =        '^ !';
+    const expected =      '--(a|)';
+
+    const source = e1
+      .groupBy((val: string) => val.toLowerCase().trim())
+      .take(1)
+      .mergeMap((group: any) => group.take(1));
+
+    expectObservable(source).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -842,6 +903,39 @@ describe('Observable.prototype.groupBy', () => {
     expectObservable(source, unsub).toBe(expected, expectedGroups);
   });
 
+  it('should dispose a durationSelector after closing the group',
+  () => {
+    const obs = hot('-0-1--------2-|');
+    const sub =     '^              !' ;
+    let unsubs = [
+                    '-^--!',
+                    '---^--!',
+                    '------------^-!',
+    ];
+    const dur =     '---s';
+    const durations = [
+      cold(dur),
+      cold(dur),
+      cold(dur)
+    ];
+
+    const unsubscribedFrame = Rx.TestScheduler
+      .parseMarblesAsSubscriptions(sub)
+      .unsubscribedFrame;
+
+    obs.groupBy(
+      (val: string) => val,
+      (val: string) => val,
+      (group: any) => durations[group.key]
+    ).subscribe();
+
+    rxTestScheduler.schedule(() => {
+      durations.forEach((d, i) => {
+        expectSubscriptions(d.subscriptions).toBe(unsubs[i]);
+      });
+    }, unsubscribedFrame);
+  });
+
   it('should allow using a durationSelector, but keySelector throws', () => {
     const values = {
       a: '  foo',
@@ -945,7 +1039,7 @@ describe('Observable.prototype.groupBy', () => {
     };
     const e1 = hot('-1--2--^-a-b-c-d-e-f-g-h-i-j-k-l-|', values);
     const e1subs =        '^           !              ';
-    const expected =      '--v---w---x-#              ';
+    const expected =      '--v---w---x-(y#)              ';
     const v = cold(         'a-b---(d|)               ', values);
     const w = cold(             'c-----#              ', values);
     const x = cold(                 'e-#              ', values);
@@ -1118,83 +1212,72 @@ describe('Observable.prototype.groupBy', () => {
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
-  it('should return inners that when subscribed late exhibit hot behavior', () => {
-    const values = {
-      a: '  foo',
-      b: ' FoO ',
-      c: 'baR  ',
-      d: 'foO ',
-      e: ' Baz   ',
-      f: '  qux ',
-      g: '   bar',
-      h: ' BAR  ',
-      i: 'FOO ',
-      j: 'baz  ',
-      k: ' bAZ ',
-      l: '    fOo    '
-    };
-    const e1 = hot('-1--2--^-a-b-c-d-e-f-g-h-i-j-k-l-|', values);
-    const e1subs =        '^                         !';
-    const expected =      '--v---w---x-y-----z-------|';
-    const subv =          '       ^                   ';
-    const v =             '--------(d|)'               ;
-    const subw =          '               ^           ';
-    const w =             '----------------(h|)'       ;
-    const subx =          '                     ^     ';
-    const x =             '----------------------(k|)' ;
-    const suby =          '                              ^';
-    const y =             '------------------------------|';
-    const subz =          '                                ^';
-    const z =             '--------------------------------|';
+   it('should return inners that when subscribed late exhibit hot behavior', () => {
+     const values = {
+       a: '  foo',
+       b: ' FoO ',
+       c: 'baR  ',
+       d: 'foO ',
+       e: ' Baz   ',
+       f: '  qux ',
+       g: '   bar',
+       h: ' BAR  ',
+       i: 'FOO ',
+       j: 'baz  ',
+       k: ' bAZ ',
+       l: '    fOo    '
+     };
+     const e1 = hot('-1--2--^-a-b-c-d-e-f-g-h-i-j-k-l-|    ', values);
+     const e1subs =        '^                         !    ';
+     const expected =      '--v---w---x-y-------------|    ';
+     const subv =          '   ^                           '; // foo
+     const v =             '  --b---d---------i-----l-|    '; // foo
+     const subw =          '         ^                     '; // bar
+     const w =             '      --------g-h---------|    '; // bar
+     const subx =          '                   ^           '; // baz
+     const x =             '          ----------j-k---|    '; // baz
+     const suby =          '                              ^'; // qux
+     const y =             '            ------------------|'; // qux
 
-    const expectedGroups = {
-      v: Rx.TestScheduler.parseMarbles(v, values),
-      w: Rx.TestScheduler.parseMarbles(w, values),
-      x: Rx.TestScheduler.parseMarbles(x, values),
-      y: Rx.TestScheduler.parseMarbles(y, values),
-      z: Rx.TestScheduler.parseMarbles(z, values)
-    };
+     const expectedGroups = {
+       v: Rx.TestScheduler.parseMarbles(v, values),
+       w: Rx.TestScheduler.parseMarbles(w, values),
+       x: Rx.TestScheduler.parseMarbles(x, values),
+       y: Rx.TestScheduler.parseMarbles(y, values),
+     };
 
-    const subscriptionFrames = {
-      foo: Rx.TestScheduler.parseMarblesAsSubscriptions(subv).subscribedFrame,
-      bar: Rx.TestScheduler.parseMarblesAsSubscriptions(subw).subscribedFrame,
-      baz: Rx.TestScheduler.parseMarblesAsSubscriptions(subx).subscribedFrame,
-      qux: Rx.TestScheduler.parseMarblesAsSubscriptions(suby).subscribedFrame,
-      foo2: Rx.TestScheduler.parseMarblesAsSubscriptions(subz).subscribedFrame
-    };
-    const hasSubscribed = {};
+     const subscriptionFrames = {
+       foo: Rx.TestScheduler.parseMarblesAsSubscriptions(subv).subscribedFrame,
+       bar: Rx.TestScheduler.parseMarblesAsSubscriptions(subw).subscribedFrame,
+       baz: Rx.TestScheduler.parseMarblesAsSubscriptions(subx).subscribedFrame,
+       qux: Rx.TestScheduler.parseMarblesAsSubscriptions(suby).subscribedFrame,
+     };
 
-    const source = e1
-      .groupBy(
-      (val: string) => val.toLowerCase().trim(),
-      (val: string) => val,
-      (group: any) => group.skip(2)
-    )
-      .map((group: any) => {
-        const arr = [];
+     const result = e1
+       .groupBy(
+         (val: string) => val.toLowerCase().trim(),
+         (val: string) => val
+       ).map((group: any) => {
+         const innerNotifications = [];
+         const subscriptionFrame = subscriptionFrames[group.key];
 
-        const subscriptionFrame = hasSubscribed[group.key] ?
-          subscriptionFrames[group.key + '2'] :
-          subscriptionFrames[group.key];
+         rxTestScheduler.schedule(() => {
+           group
+             .materialize()
+             .map((notification: Rx.Notification<any>) => {
+               return { frame: rxTestScheduler.frame, notification: notification };
+             })
+             .subscribe((value: any) => {
+               innerNotifications.push(value);
+             });
+         }, subscriptionFrame - rxTestScheduler.frame);
 
-        rxTestScheduler.schedule(() => {
-          group
-            .materialize()
-            .map((notification: Rx.Notification<any>) => {
-              return { frame: rxTestScheduler.frame, notification: notification };
-            })
-            .subscribe((value: any) => {
-              arr.push(value);
-            });
-          hasSubscribed[group.key] = true;
-        }, subscriptionFrame - rxTestScheduler.frame);
+         return innerNotifications;
+       });
 
-        return arr;
-      });
-
-    expectObservable(source).toBe(expected, expectedGroups);
-    expectSubscriptions(e1.subscriptions).toBe(e1subs);
-  });
+     expectObservable(result).toBe(expected, expectedGroups);
+     expectSubscriptions(e1.subscriptions).toBe(e1subs);
+   });
 
   it('should return inner group that when subscribed late emits complete()', () => {
     const values = {
@@ -1362,7 +1445,7 @@ describe('Observable.prototype.groupBy', () => {
       observer.complete();
     }).groupBy(
       (x: number) => x % 2,
-      (x: string) => x + '!'
+      (x: number) => x + '!'
     );
 
     expect(result instanceof MyCustomObservable).to.be.true;

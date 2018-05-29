@@ -1,13 +1,19 @@
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, asDiagram, cold, expectObservable, expectSubscriptions};
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
 /** @test {combineLatest} */
 describe('Observable.prototype.combineLatest', () => {
   asDiagram('combineLatest')('should combine events from two cold observables', () => {
-    const e1 =   hot('-a--b-----c-d-e-|');
-    const e2 =   hot('--1--2-3-4---|   ');
+    const e1 =   cold('-a--b-----c-d-e-|');
+    const e2 =   cold('--1--2-3-4---|   ');
     const expected = '--A-BC-D-EF-G-H-|';
 
     const result = e1.combineLatest(e2, (a: any, b: any) => String(a) + String(b));
@@ -460,5 +466,15 @@ describe('Observable.prototype.combineLatest', () => {
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
     expectSubscriptions(e2.subscriptions).toBe(e2subs);
+  });
+
+  it('should emit unique array instances with the default projection', () => {
+    const e1 =   hot('-a--b--|');
+    const e2 =   hot('--1--2-|');
+    const expected = '-------(c|)';
+
+    const result = e1.combineLatest(e2).distinct().count();
+
+    expectObservable(result).toBe(expected, { c: 3 });
   });
 });

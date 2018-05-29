@@ -1,10 +1,16 @@
-import {expect} from 'chai';
+import { expect } from 'chai';
 import * as sinon from 'sinon';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
 
-declare const {hot, asDiagram, expectObservable, expectSubscriptions};
+declare const { asDiagram };
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+
 declare const rxTestScheduler: Rx.TestScheduler;
 const Observable = Rx.Observable;
+const asap = Rx.Scheduler.asap;
+const queue = Rx.Scheduler.queue;
+const animationFrame = Rx.Scheduler.animationFrame;
 
 /** @test {interval} */
 describe('Observable.interval', () => {
@@ -65,5 +71,86 @@ describe('Observable.interval', () => {
     }, () => {
       done(new Error('should not be called'));
     });
+  });
+
+  it('should create an observable emitting periodically with the AsapScheduler', (done: MochaDone) => {
+    const sandbox = sinon.sandbox.create();
+    const fakeTimer = sandbox.useFakeTimers();
+    const interval = 10;
+    const events = [0, 1, 2, 3, 4, 5];
+    const source = Observable.interval(interval, asap).take(6);
+    source.subscribe({
+      next(x) {
+        expect(x).to.equal(events.shift());
+      },
+      error(e) {
+        sandbox.restore();
+        done(e);
+      },
+      complete() {
+        expect(asap.actions.length).to.equal(0);
+        expect(asap.scheduled).to.equal(undefined);
+        sandbox.restore();
+        done();
+      }
+    });
+    let i = -1, n = events.length;
+    while (++i < n) {
+      fakeTimer.tick(interval);
+    }
+  });
+
+  it('should create an observable emitting periodically with the QueueScheduler', (done: MochaDone) => {
+    const sandbox = sinon.sandbox.create();
+    const fakeTimer = sandbox.useFakeTimers();
+    const interval = 10;
+    const events = [0, 1, 2, 3, 4, 5];
+    const source = Observable.interval(interval, queue).take(6);
+    source.subscribe({
+      next(x) {
+        expect(x).to.equal(events.shift());
+      },
+      error(e) {
+        sandbox.restore();
+        done(e);
+      },
+      complete() {
+        expect(queue.actions.length).to.equal(0);
+        expect(queue.scheduled).to.equal(undefined);
+        sandbox.restore();
+        done();
+      }
+    });
+    let i = -1, n = events.length;
+    while (++i < n) {
+      fakeTimer.tick(interval);
+    }
+  });
+
+  it('should create an observable emitting periodically with the AnimationFrameScheduler', (done: MochaDone) => {
+    const sandbox = sinon.sandbox.create();
+    const fakeTimer = sandbox.useFakeTimers();
+    const interval = 10;
+    const events = [0, 1, 2, 3, 4, 5];
+    const source = Observable.interval(interval, animationFrame).take(6);
+    source.subscribe({
+      next(x) {
+        expect(x).to.equal(events.shift());
+      },
+      error(e) {
+        sandbox.restore();
+        done(e);
+      },
+      complete() {
+        expect(animationFrame.actions.length).to.equal(0);
+        expect(animationFrame.scheduled).to.equal(undefined);
+        sandbox.restore();
+        done();
+      }
+    });
+    let i = -1, n = events.length;
+    while (++i < n) {
+      fakeTimer.tick(interval);
+    }
   });
 });

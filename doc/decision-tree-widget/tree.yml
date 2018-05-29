@@ -59,6 +59,9 @@ children:
         - label: based on custom logic
           children:
           - label: skipWhile
+      - label: from the end of the Observable
+        children:
+        - label: skipLast
       - label: until another Observable emits a value
         children:
         - label: skipUntil
@@ -77,9 +80,6 @@ children:
           - label: emitted just before the current value
             children:
             - label: distinctUntilKeyChanged
-          - label: emitted some time in the past
-            children:
-            - label: distinctKey
       - label: that occur too frequently
         children:
         - label: by emitting the first value in each time window
@@ -94,10 +94,10 @@ children:
           children:
           - label: "where time windows are determined by another Observable's emissions"
             children:
-            - label: inspect
+            - label: audit
           - label: where time windows are determined by a time duration
             children:
-            - label: inspectTime
+            - label: auditTime
         - label: by emitting the last value as soon as enough silence has occured
           children:
           - label: where the silence duration threshold is determined by another Observable"
@@ -286,7 +286,12 @@ children:
       children:
       - label: I want to re-subscribe
         children:
-        - label: repeat
+          - label: immediately
+            children:
+            - label: repeat
+          - label: when another Observable emits
+            children:
+            - label: repeatWhen
       - label: I want to start a new Observable
         children:
         - label: concat
@@ -308,7 +313,7 @@ children:
         - label: race
       - label: I want to output the values from either of them
         children:
-        - label: Observable.merge
+        - label: merge
       - label: I want to output a value computed from values of the source Observables
         children:
         - label: using the latest value of each source whenever any source emits
@@ -349,6 +354,9 @@ children:
       - label: using custom logic
         children:
         - label: Observable.create
+      - label: using a state machine similar to a for loop
+        children:
+        - label: Observable.generate
       - label: that throws an error
         children:
         - label: Observable.throw

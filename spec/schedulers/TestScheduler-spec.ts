@@ -1,6 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, time, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { time };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 declare const rxTestScheduler: Rx.TestScheduler;
 const Notification = Rx.Notification;
@@ -123,7 +129,7 @@ describe('TestScheduler', () => {
       const expected = ['A', 'B'];
       const scheduler = new TestScheduler(null);
       const source = scheduler.createHotObservable('--a---b--|', { a: 'A', b: 'B' });
-      expect(source instanceof Rx.Subject).to.be.true;
+      expect(source).to.be.an.instanceof(Rx.Subject);
       source.subscribe((x: string) => {
         expect(x).to.equal(expected.shift());
       });
@@ -135,7 +141,7 @@ describe('TestScheduler', () => {
   describe('jasmine helpers', () => {
     describe('rxTestScheduler', () => {
       it('should exist', () => {
-        expect(rxTestScheduler instanceof TestScheduler).to.be.true;
+        expect(rxTestScheduler).to.be.an.instanceof(TestScheduler);
       });
     });
 

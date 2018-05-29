@@ -1,6 +1,7 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-import {IteratorObservable} from '../../dist/cjs/observable/IteratorObservable';
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import { queue } from '../../dist/package/scheduler/queue';
+import { IteratorObservable } from '../../dist/package/observable/IteratorObservable';
 
 declare const expectObservable;
 declare const rxTestScheduler: Rx.TestScheduler;
@@ -29,13 +30,7 @@ describe('IteratorObservable', () => {
   it('should not accept boolean as iterator', () => {
     expect(() => {
       IteratorObservable.create(false);
-    }).to.throw(Error, 'Object is not iterable');
-  });
-
-  it('should not accept non-function project', () => {
-    expect(() => {
-      IteratorObservable.create([], 42);
-    }).to.throw(Error, 'When provided, `project` must be a function.');
+    }).to.throw(Error, 'object is not iterable');
   });
 
   it('should emit members of an array iterator', (done: MochaDone) => {
@@ -52,11 +47,71 @@ describe('IteratorObservable', () => {
       );
   });
 
+  it('should finalize generators if the subscription ends', () => {
+    const iterator = {
+      finalized: false,
+      next() {
+        return { value: 'duck', done: false };
+      },
+      return() {
+        this.finalized = true;
+      }
+    };
+
+    const iterable = {
+      [Rx.Symbol.iterator]() {
+        return iterator;
+      }
+    };
+
+    const results = [];
+
+    IteratorObservable.create(iterable)
+      .take(3)
+      .subscribe(
+        x => results.push(x),
+        null,
+        () => results.push('GOOSE!')
+      );
+
+    expect(results).to.deep.equal(['duck', 'duck', 'duck', 'GOOSE!']);
+    expect(iterator.finalized).to.be.true;
+  });
+
+  it('should finalize generators if the subscription and it is scheduled', () => {
+    const iterator = {
+      finalized: false,
+      next() {
+        return { value: 'duck', done: false };
+      },
+      return() {
+        this.finalized = true;
+      }
+    };
+
+    const iterable = {
+      [Rx.Symbol.iterator]() {
+        return iterator;
+      }
+    };
+
+    const results = [];
+
+    IteratorObservable.create(iterable, queue)
+      .take(3)
+      .subscribe(
+        x => results.push(x),
+        null,
+        () => results.push('GOOSE!')
+      );
+
+    expect(results).to.deep.equal(['duck', 'duck', 'duck', 'GOOSE!']);
+    expect(iterator.finalized).to.be.true;
+  });
+
   it('should emit members of an array iterator on a particular scheduler', () => {
     const source = IteratorObservable.create(
       [10, 20, 30, 40],
-      (x: number) => x,
-      null,
       rxTestScheduler
     );
 
@@ -65,32 +120,12 @@ describe('IteratorObservable', () => {
     expectObservable(source).toBe('(abcd|)', values);
   });
 
-  it('should emit members of an array iterator on a particular scheduler, project throws', () => {
-    const source = IteratorObservable.create(
-      [10, 20, 30, 40],
-      (x: number) => {
-        if (x === 30) {
-          throw 'error';
-        }
-        return x * x;
-      },
-      null,
-      rxTestScheduler
-    );
-
-    const values = { a: 100, b: 400 };
-
-    expectObservable(source).toBe('(ab#)', values);
-  });
-
   it('should emit members of an array iterator on a particular scheduler, ' +
   'but is unsubscribed early', (done: MochaDone) => {
     const expected = [10, 20, 30, 40];
 
     const source = IteratorObservable.create(
       [10, 20, 30, 40],
-      (x: number) => x,
-      null,
       Rx.Scheduler.queue
     );
 
@@ -110,62 +145,11 @@ describe('IteratorObservable', () => {
     source.subscribe(subscriber);
   });
 
-  it('should emit members of an array iterator, and project them', (done: MochaDone) => {
-    const expected = [100, 400, 900, 1600];
-    IteratorObservable.create([10, 20, 30, 40], (x: number) => x * x)
-      .subscribe(
-        (x: number) => { expect(x).to.equal(expected.shift()); },
-        (x) => {
-          done(new Error('should not be called'));
-        }, () => {
-          expect(expected.length).to.equal(0);
-          done();
-        }
-      );
-  });
-
-  it('should emit members of an array iterator, and project but raise an error', (done: MochaDone) => {
-    const expected = [100, 400];
-    function project(x) {
-      if (x === 30) {
-        throw new Error('boom');
-      } else {
-        return x * x;
-      }
-    }
-    IteratorObservable.create([10, 20, 30, 40], project)
-      .subscribe(
-        (x: number) => {
-          expect(x).to.equal(expected.shift());
-        },
-        (err: any) => {
-          expect(expected.length).to.equal(0);
-          expect(err.message).to.equal('boom');
-          done();
-        }, () => {
-          done(new Error('should not be called'));
-        });
-  });
-
   it('should emit characters of a string iterator', (done: MochaDone) => {
     const expected = ['f', 'o', 'o'];
     IteratorObservable.create('foo')
       .subscribe(
         (x: number) => { expect(x).to.equal(expected.shift()); },
-        (x) => {
-          done(new Error('should not be called'));
-        }, () => {
-          expect(expected.length).to.equal(0);
-          done();
-        }
-      );
-  });
-
-  it('should emit characters of a string iterator, and project them', (done: MochaDone) => {
-    const expected = ['F', 'O', 'O'];
-    IteratorObservable.create('foo', (x: string) => x.toUpperCase())
-      .subscribe(
-        (x: string) => { expect(x).to.equal(expected.shift()); },
         (x) => {
           done(new Error('should not be called'));
         }, () => {

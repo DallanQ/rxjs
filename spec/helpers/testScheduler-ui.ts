@@ -1,29 +1,35 @@
-///<reference path='../../typings/main.d.ts'/>
+///<reference path='../../typings/index.d.ts'/>
 ///<reference path='ambient.d.ts'/>
 
 import * as _ from 'lodash';
-import * as mocha from 'mocha';
-import * as Suite from 'mocha/lib/suite';
-import * as Test from 'mocha/lib/test';
 import * as commonInterface from 'mocha/lib/interfaces/common';
 import * as escapeRe from 'escape-string-regexp';
 import * as chai from 'chai';
 import * as sinonChai from 'sinon-chai';
 
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
+import * as Rx from '../../dist/package/Rx';
 import * as marble from './marble-testing';
 
 //setup sinon-chai
 chai.use(sinonChai);
 
-declare const module: any;
-declare const global: any;
+declare const module, global, Suite, Test: any;
+
+if (global && !(typeof window !== 'undefined')) {
+  global.mocha = require('mocha'); // tslint:disable-line:no-require-imports no-var-requires
+  global.Suite = global.mocha.Suite;
+  global.Test = global.mocha.Test;
+}
+
+if (!global.Promise) {
+  global.Promise = require('promise'); // tslint:disable-line:no-require-imports no-var-requires
+}
 
 const diagramFunction = global.asDiagram;
 
 //mocha creates own global context per each test suite, simple patching to global won't deliver its context into test cases.
 //this custom interface is just mimic of existing one amending test scheduler behavior previously test-helper does via global patching.
-module.exports = (<any>mocha).interfaces['testscheduler-ui'] = function(suite) {
+module.exports = function(suite) {
   const suites = [suite];
 
   suite.on('pre-require', function(context, file, mocha) {
@@ -108,12 +114,25 @@ module.exports = (<any>mocha).interfaces['testscheduler-ui'] = function(suite) {
       .replace(/\\n/g, '\n');
     }
 
+    function deleteErrorNotificationStack(marble) {
+      const { notification } = marble;
+      if (notification) {
+        const { kind, error } = notification;
+        if (kind === 'E' && error instanceof Error) {
+          notification.error = { name: error.name, message: error.message };
+        }
+      }
+      return marble;
+    }
+
     /**
      * custom assertion formatter for expectObservable test
      */
 
     function observableMatcher(actual, expected) {
       if (Array.isArray(actual) && Array.isArray(expected)) {
+        actual = actual.map(deleteErrorNotificationStack);
+        expected = expected.map(deleteErrorNotificationStack);
         const passed = _.isEqual(actual, expected);
         if (passed) {
           return;
@@ -142,18 +161,14 @@ module.exports = (<any>mocha).interfaces['testscheduler-ui'] = function(suite) {
       let modified = fn;
 
       if (fn && fn.length === 0) {
-        modified = function (done: MochaDone) {
+        modified = function () {
           context.rxTestScheduler = new Rx.TestScheduler(observableMatcher);
-          let error: Error = null;
 
           try {
             fn();
             context.rxTestScheduler.flush();
-          } catch (e) {
-            error = e instanceof Error ? e : new Error(e);
           } finally {
             context.rxTestScheduler = null;
-            error ? done(error) : done();
           }
         };
       }
@@ -207,6 +222,13 @@ module.exports = (<any>mocha).interfaces['testscheduler-ui'] = function(suite) {
     };
   });
 };
+
+//register into global instnace if browser test page injects mocha globally
+if (global.Mocha) {
+  (<any>window).Mocha.interfaces['testschedulerui'] = module.exports;
+} else {
+  (<any>mocha).interfaces['testschedulerui'] = module.exports;
+}
 
 //overrides JSON.toStringfy to serialize error object
 Object.defineProperty(Error.prototype, 'toJSON', {

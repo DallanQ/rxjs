@@ -1,6 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import { lowerCaseO } from '../helpers/test-helper';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 const queueScheduler = Rx.Scheduler.queue;
@@ -341,5 +347,41 @@ describe('Observable.concat', () => {
     Observable.concat(a, b, queueScheduler).subscribe((vals: number) => {
       expect(vals).to.equal(r.shift());
     }, null, done);
+  });
+
+  it('should use the scheduler even when one Observable is concat\'d', (done: MochaDone) => {
+    let e1Subscribed = false;
+    const e1 = Observable.defer(() => {
+      e1Subscribed = true;
+      return Observable.of('a');
+    });
+
+    Observable
+      .concat(e1, Rx.Scheduler.async)
+      .subscribe({
+        error: done,
+        complete: () => {
+          expect(e1Subscribed).to.be.true;
+          done();
+        }
+      });
+
+    expect(e1Subscribed).to.be.false;
+  });
+
+  it('should return passed observable if no scheduler was passed', () => {
+    const source = cold('--a---b----c---|');
+    const result = Observable.concat(source);
+
+    expect(result).to.equal(source);
+    expectObservable(result).toBe('--a---b----c---|');
+  });
+
+  it('should return RxJS Observable when single lowerCaseO was passed', () => {
+    const source = lowerCaseO('a', 'b', 'c');
+    const result = Observable.concat(source);
+
+    expect(result).to.be.an.instanceof(Observable);
+    expectObservable(result).toBe('(abc|)');
   });
 });

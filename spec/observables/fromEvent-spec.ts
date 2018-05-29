@@ -1,10 +1,33 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const rxTestScheduler: Rx.TestScheduler;
 
 const Observable = Rx.Observable;
 
 /** @test {fromEvent} */
 describe('Observable.fromEvent', () => {
+  asDiagram('fromEvent(element, \'click\')')
+  ('should create an observable of click on the element', () => {
+    const target = {
+      addEventListener: (eventType, listener) => {
+        Observable.timer(50, 20, rxTestScheduler)
+          .mapTo('ev')
+          .take(2)
+          .concat(Observable.never())
+          .subscribe(listener);
+      },
+      removeEventListener: () => void 0,
+      dispatchEvent: () => void 0,
+    };
+    const e1 = Observable.fromEvent(target, 'click');
+    const expected = '-----x-x---';
+    expectObservable(e1).toBe(expected, {x: 'ev'});
+  });
+
   it('should setup an event observable on objects with "on" and "off" ', () => {
     let onEventName;
     let onHandler;
@@ -93,6 +116,42 @@ describe('Observable.fromEvent', () => {
     expect(typeof onHandler).to.equal('function');
     expect(offEventName).to.equal(onEventName);
     expect(offHandler).to.equal(onHandler);
+  });
+
+  it('should error on invalid event targets', () => {
+    const obj = {
+      addListener: () => {
+        //noop
+      }
+    };
+
+    const subscribe = () => Observable.fromEvent(<any>obj, 'click').subscribe();
+    expect(subscribe).to.throw(TypeError, 'Invalid event target');
+  });
+
+  it('should pass through options to addEventListener and removeEventListener', () => {
+    let onOptions;
+    let offOptions;
+    const expectedOptions = { capture: true, passive: true };
+
+    const obj = {
+      addEventListener: (a: string, b: EventListenerOrEventListenerObject, c?: any) => {
+        onOptions = c;
+      },
+      removeEventListener: (a: string, b: EventListenerOrEventListenerObject, c?: any) => {
+        offOptions = c;
+      }
+    };
+
+    const subscription = Observable.fromEvent(<any>obj, 'click', expectedOptions)
+      .subscribe(() => {
+        //noop
+       });
+
+    subscription.unsubscribe();
+
+    expect(onOptions).to.equal(expectedOptions);
+    expect(offOptions).to.equal(expectedOptions);
   });
 
   it('should pass through events that occur', (done: MochaDone) => {
@@ -225,4 +284,21 @@ describe('Observable.fromEvent', () => {
 
     send(1, 2, 3);
   });
+
+  it('should not throw an exception calling toString on obj with a null prototype', (done: MochaDone) => {
+    // NOTE: Can not test with Object.create(null) or `class Foo extends null`
+    // due to TypeScript bug. https://github.com/Microsoft/TypeScript/issues/1108
+    class NullProtoEventTarget {
+      on() { /*noop*/ }
+      off() { /*noop*/ }
+    }
+    NullProtoEventTarget.prototype.toString = null;
+    const obj: NullProtoEventTarget = new NullProtoEventTarget();
+
+    expect(() => {
+      Observable.fromEvent(obj, 'foo').subscribe();
+      done();
+    }).to.not.throw(TypeError);
+  });
+
 });

@@ -1,15 +1,21 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-import {lowerCaseO} from '../helpers/test-helper';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import { lowerCaseO } from '../helpers/test-helper';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
 /** @test {withLatestFrom} */
 describe('Observable.prototype.withLatestFrom', () => {
   asDiagram('withLatestFrom')('should combine events from cold observables', () => {
-    const e1 =   hot('-a--b-----c-d-e-|');
-    const e2 =   hot('--1--2-3-4---|   ');
+    const e1 =  cold('-a--b-----c-d-e-|');
+    const e2 =  cold('--1--2-3-4---|   ');
     const expected = '----B-----C-D-E-|';
 
     const result = e1.withLatestFrom(e2, (a: string, b: string) => String(a) + String(b));

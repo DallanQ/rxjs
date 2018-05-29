@@ -1,5 +1,11 @@
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, asDiagram, time, expectObservable, expectSubscriptions};
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram, time };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 declare const rxTestScheduler: Rx.TestScheduler;
 const Observable = Rx.Observable;
@@ -18,7 +24,7 @@ describe('Observable.prototype.bufferTime', () => {
       z: []
     };
 
-    const result = e1.bufferTime(t, null, rxTestScheduler);
+    const result = e1.bufferTime(t, null, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -34,9 +40,45 @@ describe('Observable.prototype.bufferTime', () => {
       z: []
     };
 
-    const result = e1.bufferTime(t, null, rxTestScheduler);
+    const result = e1.bufferTime(t, null, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result).toBe(expected, values);
+  });
+
+  it('should emit buffers at intervals or when the buffer is full', () => {
+    const e1 =   hot('---a---b---c---d---e---f---g-----|');
+    const subs =     '^                                !';
+    const t = time(  '----------|');
+    const expected = '-------w-------x-------y---------(z|)';
+    const values = {
+      w: ['a', 'b'],
+      x: ['c', 'd'],
+      y: ['e', 'f'],
+      z: ['g']
+    };
+
+    const result = e1.bufferTime(t, null, 2, rxTestScheduler);
+
+    expectObservable(result).toBe(expected, values);
+    expectSubscriptions(e1.subscriptions).toBe(subs);
+  });
+
+  it('should emit buffers at intervals or when the buffer is full test 2', () => {
+    const e1 =   hot('---a---b---c---d---e---f---g-----|');
+    const subs =     '^                                !';
+    const t = time(  '----------|');
+    const expected = '----------w--------x---------y---(z|)';
+    const values = {
+      w: ['a', 'b'],
+      x: ['c', 'd', 'e'],
+      y: ['f', 'g'],
+      z: []
+    };
+
+    const result = e1.bufferTime(t, null, 3, rxTestScheduler);
+
+    expectObservable(result).toBe(expected, values);
+    expectSubscriptions(e1.subscriptions).toBe(subs);
   });
 
   it('should emit buffers that have been created at intervals and close after the specified delay', () => {
@@ -54,7 +96,28 @@ describe('Observable.prototype.bufferTime', () => {
       z: ['i', 'k']
     };
 
-    const result = e1.bufferTime(t, interval, rxTestScheduler);
+    const result = e1.bufferTime(t, interval, Number.POSITIVE_INFINITY, rxTestScheduler);
+
+    expectObservable(result).toBe(expected, values);
+  });
+
+  it('should emit buffers that have been created at intervals and close after the specified delay ' +
+  'or when the buffer is full', () => {
+    const e1 =   hot('---a---b---c----d----e----f----g----h----i----(k|)');
+                 // --------------------*--------------------*----  start interval
+                 // ---------------------|                          timespans
+                 //                     ---------------------|
+                 //                                          -----|
+    const t = time(  '---------------------|');
+    const interval = time(                '--------------------|');
+    const expected = '----------------x-------------------y---------(z|)';
+    const values = {
+      x: ['a', 'b', 'c', 'd'],
+      y: ['e', 'f', 'g', 'h'],
+      z: ['i', 'k']
+    };
+
+    const result = e1.bufferTime(t, interval, 4, rxTestScheduler);
 
     expectObservable(result).toBe(expected, values);
   });
@@ -81,7 +144,7 @@ describe('Observable.prototype.bufferTime', () => {
       f: []
     };
 
-    const result = e1.bufferTime(t, interval, rxTestScheduler);
+    const result = e1.bufferTime(t, interval, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -107,7 +170,7 @@ describe('Observable.prototype.bufferTime', () => {
       e: []
     };
 
-    const result = e1.bufferTime(t, interval, rxTestScheduler);
+    const result = e1.bufferTime(t, interval, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result).toBe(expected, values);
   });
@@ -127,7 +190,7 @@ describe('Observable.prototype.bufferTime', () => {
       a: ['2', '3', '4']
     };
 
-    const result = e1.bufferTime(t, interval, rxTestScheduler);
+    const result = e1.bufferTime(t, interval, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -150,7 +213,7 @@ describe('Observable.prototype.bufferTime', () => {
 
     const result = e1
       .mergeMap((x: any) => Observable.of(x))
-      .bufferTime(t, interval, rxTestScheduler)
+      .bufferTime(t, interval, Number.POSITIVE_INFINITY, rxTestScheduler)
       .mergeMap((x: any) => Observable.of(x));
 
     expectObservable(result, unsub).toBe(expected, values);
@@ -164,7 +227,7 @@ describe('Observable.prototype.bufferTime', () => {
     const values = { b: [] };
     const t = time('----------|');
 
-    const result = e1.bufferTime(t, null, rxTestScheduler);
+    const result = e1.bufferTime(t, null, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -176,7 +239,7 @@ describe('Observable.prototype.bufferTime', () => {
     const t = time(  '----------|');
     const expected = '----------a---------a---------a---------a----';
 
-    const result = e1.bufferTime(t, null, rxTestScheduler);
+    const result = e1.bufferTime(t, null, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result, unsub).toBe(expected, { a: [] });
   });
@@ -186,7 +249,7 @@ describe('Observable.prototype.bufferTime', () => {
     const expected = '#';
     const t = time('----------|');
 
-    const result = e1.bufferTime(t, null, rxTestScheduler);
+    const result = e1.bufferTime(t, null, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result).toBe(expected, undefined, new Error('haha'));
   });
@@ -200,7 +263,7 @@ describe('Observable.prototype.bufferTime', () => {
       w: ['a', 'b']
     };
 
-    const result = e1.bufferTime(t, null, rxTestScheduler);
+    const result = e1.bufferTime(t, null, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -222,9 +285,44 @@ describe('Observable.prototype.bufferTime', () => {
       y: ['e', 'f', 'g', 'h', 'i']
     };
 
-    const result = e1.bufferTime(t, interval, rxTestScheduler);
+    const result = e1.bufferTime(t, interval, Number.POSITIVE_INFINITY, rxTestScheduler);
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
+  });
+
+  it('should not throw when subscription synchronously unsubscribed after emit', () => {
+    const e1 =   hot('---a---b---c---d---e---f---g-----|');
+    const subs =     '^                   !';
+    const t = time(  '----------|');
+    const expected = '----------w---------(x|)';
+    const values = {
+      w: ['a', 'b'],
+      x: ['c', 'd', 'e']
+    };
+
+    const result = e1.bufferTime(t, null, Number.POSITIVE_INFINITY, rxTestScheduler).take(2);
+
+    expectObservable(result).toBe(expected, values);
+    expectSubscriptions(e1.subscriptions).toBe(subs);
+  });
+
+  it('should not have errors when take follows and maxBufferSize is provided', () => {
+    const tick = 10;
+    const bufferTime = 50;
+    const expected = '-----a----b----c----d----(e|)';
+    const values = {
+      a: [0, 1, 2, 3],
+      b: [4, 5, 6, 7, 8],
+      c: [9, 10, 11, 12, 13],
+      d: [14, 15, 16, 17, 18],
+      e: [19, 20, 21, 22, 23]
+    };
+
+    const source = Rx.Observable.interval(tick, rxTestScheduler)
+      .bufferTime(bufferTime, null, 10, rxTestScheduler)
+      .take(5);
+
+    expectObservable(source).toBe(expected, values);
   });
 });

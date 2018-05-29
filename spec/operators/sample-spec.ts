@@ -1,5 +1,12 @@
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, asDiagram, expectObservable, expectSubscriptions};
+import * as Rx from '../../dist/package/Rx';
+import { expect } from 'chai';
+
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 const Observable = Rx.Observable;
 
@@ -27,6 +34,21 @@ describe('Observable.prototype.sample', () => {
     expectObservable(e1.sample(e2)).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
     expectSubscriptions(e2.subscriptions).toBe(e2subs);
+  });
+
+  it('should behave properly when notified by the same observable as the source (issue #2075)', () => {
+    const item$ = new Rx.Subject();
+    const results = [];
+
+    item$
+      .sample(item$)
+      .subscribe(value => results.push(value));
+
+    item$.next(1);
+    item$.next(2);
+    item$.next(3);
+
+    expect(results).to.deep.equal([1, 2, 3]);
   });
 
   it('should sample nothing if source has nexted after all notifications, but notifier does not complete', () => {

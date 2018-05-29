@@ -1,10 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-import {ArrayObservable} from '../../dist/cjs/observable/ArrayObservable';
-import {ScalarObservable} from '../../dist/cjs/observable/ScalarObservable';
-import {EmptyObservable} from '../../dist/cjs/observable/EmptyObservable';
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import { ArrayObservable } from '../../dist/package/observable/ArrayObservable';
+import { ScalarObservable } from '../../dist/package/observable/ScalarObservable';
+import { EmptyObservable } from '../../dist/package/observable/EmptyObservable';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
 
-declare const {hot, asDiagram, expectObservable, expectSubscriptions};
+declare const { asDiagram };
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
 declare const rxTestScheduler: Rx.TestScheduler;
 const Observable = Rx.Observable;
 

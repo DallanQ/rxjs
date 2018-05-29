@@ -53,70 +53,87 @@ enabling "composite" subscription behavior.
 |RxJS 4|RxJS 5|
 |---|---|
 |`amb`|`race`|
+|`and`|No longer implemented|
+|`asObservable`|Exists on `Subject` only|
+|`average`|No longer implemented|
 |`bufferWithCount`|`bufferCount`|
 |`bufferWithTime`|`bufferTime`|
-|`flatMap` or `selectMany`|`mergeMap` or `flatMap`(alias)|
+|`concat`|`concat`|
+|`concatAll`|`concatAll`|
+|`concatMap`|`concatMap`|
+|`concatMapObserver`|No longer implemented|
+|`controlled`|No longer implemented|
+|`delaySubscription`|No longer implemented|
+|`do`|`do`|
+|`doAction`|`do`|
+|`doOnCompleted`|`do(null, null, fn)`|
+|`doOnError`|`do(null, fn)`|
+|`doOnNext`|`do(fn)`|
+|`doWhile`|No longer implemented|
+|`extend`|No longer implemented|
 |`flatMapFirst`|`exhaustMap`|
 |`flatMapLatest`|`switchMap`|
 |`flatMapWithMaxConcurrent`|`mergeMap` or `flatMap`(alias)|
+|`flatMap`|`mergeMap` or `flatMap`(alias)|
 |`fromCallback`|`bindCallback`|
 |`fromNodeCallback`|`bindNodeCallback`|
+|`groupByUntil`|`groupBy(keySelector, elementSelector, durationSelector)`|
+|`groupJoin`|No longer implemented|
+|`includes(v)`|`.first(x => x === v, () => true, false)`|
+|`indexOf(v)`|`.map((x, i) => [x === v, i]).filter(([x]) => x).map(([_, i]) => i).first()`|
+|`join`|No longer implemented|
+|`jortSortUntil`|No longer implemented|
+|`jortSort`|No longer implemented|
+|`just(v)` or `just(a, b, c)`|`of(v)`, `of(a, b, c)`|
+|`lastIndexOf`|`.map((x, i) => [x === v, i]).filter(([x]) => x).map(([_, i]) => i).last()`|
+|`manySelect`|No longer implemented|
+|`map(fn)`|`map(fn)`|
+|`map(value)`|`mapTo(value)`|
+|`maxBy(fn)`|`scan((s, v, i) => { let max = Math.max(s.max, fn(v, i)); return { max, value: max === s.max ? s.value : v }; }, { max: null, value: undefined }).last(x => x.max !== null, x => x.value)`|
+|`minBy(fn)`|`scan((s, v, i) => { let min = Math.min(s.min, fn(v, i)); return { min, value: min === s.min ? s.value : v }; }, { min: null, value: undefined }).last(x => x.min !== null, x => x.value)`|
+|`of`|`of`|
+|`ofObjectChanges`|No longer implemented|
+|`pausableBuffered`|No longer implemented|
+|`pausable`|No longer implemented|
+|`pluck`|`pluck`|
+|`publishLast`|`publishLast`|
 |`publishValue`|`publishBehavior`|
 |`replay`|`publishReplay`|
-|`return` or `just`|`of`|
-|`select`|`map`|
+|`return`|`of`|
+|`selectConcatObserver`|No longer implemented|
 |`selectConcat`|`concatMap`|
+|`selectMany(fn)`|`mergeMap(fn)` or `flatMap(fn)` (alias)|
+|`selectMany(observable)`|`mergeMapTo(observable)`|
+|`selectManyObserver` or `flatMapObserver`|No longer implemented|
+|`select`|`map`|
+|`shareReplay`|`publishReplay().refCount()`|
+|`shareValue`|No longer implemented|
+|`singleInstance`|`share`|
+|`skipLastWithTime`|No longer implemented|
+|`skipUntilWithTime`|No longer implemented|
+|`slice(start, end)`|`skip(start).take(end - start)`|
+|`some`|`first(fn, () => true, false)`|
+|`sum`|`reduce((s, v) => s + v, 0)`|
 |`switchFirst`|`exhaust`|
+|`takeLast`|`takeLast`|
+|`takeLastBufferWithTime`|No longer implemented|
+|`takeLastBuffer`|No longer implemented|
+|`takeLastWithTime`|No longer implemented|
+|`takeUntilWithTime`|No longer implemented|
+|`tapOnCompleted(fn)`|`do(null, null, fn)`|
+|`tapOnError(fn)`|`do(null, fn)`|
+|`tapOnNext(fn)`|`do(fn)`|
 |`tap`|`do`|
-|`windowWithTime`|`windowTime`|
-|`windowWithCount`|`windowCount`|
+|`timestamp`|`map(v => ({ value: v, timestamp: Date.now() }))`|
+|`toMap(keySelector)`|`reduce((map, v, i) => map.set(keySelector(v, i), v), new Map())`|
+|`toMap(keySelector, elmentSelector)`|`reduce((map, v, i) => map.set(keySelector(v, i), elementSelector(v)), new Map())`|
+|`toSet`|`reduce((set, v) => set.add(v))`|
+|`transduce`|No longer implemented|
 |`where`|`filter`|
-|`and`|`-`|
-|`asObservable`|`-`|
-|`average`|`-`|
-|`controlled`|`-`|
-|`delaySubscription`|`-`|
-|`doWhile`|`-`|
-|`extend`|`-`|
-|`groupByUntil`|`-`|
-|`groupJoin`|`-`|
-|`includes`|`-`|
-|`indexOf`|`-`|
-|`join`|`-`|
-|`jortSort`|`-`|
-|`jortSortUntil`|`-`|
-|`lastIndexOf`|`-`|
-|`manySelect`|`-`|
-|`maxBy`|`-`|
-|`minBy`|`-`|
-|`onErrorResumeNext`|`-`|
-|`ofObjectChanges`|`-`|
-|`pausable`|`-`|
-|`pausableBuffered`|`-`|
-|`shareReplay`|`-`|
-|`shareValue`|`-`|
-|`selectConcatObserver` or `concatMapObserver`|`-`|
-|`selectManyObserver` or `flatMapObserver`|`-`|
-|`sequenceEqual`|`-`|
-|`singleInstance`|`-`|
-|`skipLast`|`-`|
-|`skipLastWithTime`|`-`|
-|`skipUntilWithTime`|`-`|
-|`slice`|`-`|
-|`some`|`-`|
-|`sum`|`-`|
-|`takeLastBuffer`|`-`|
-|`takeLastBufferWithTime`|`-`|
-|`takeLastWithTime`|`-`|
-|`takeUntilWithTime`|`-`|
-|`tapOnNext`|`-`|
-|`tapOnError`|`-`|
-|`tapOnCompleted`|`-`|
-|`timestamp`|`-`|
-|`toMap`|`-`|
-|`toSet`|`-`|
-|`transduce`|`-`|
-|`windowWithTimeOrCount`|`-`|
+|`windowWithCount`|`windowCount`|
+|`windowWithTimeOrCount`|No longer implemented|
+|`windowWithTime`|`windowTime`|
+|`zip`|`zip`|
 
 ## Operator Splits
 
@@ -216,8 +233,52 @@ To reduce polymorphism and get better performance out of operators, some operato
       <td><code>delay(subscriptionDelay?: Observable<any>, delayDurationSelector: function)</code></td>
       <td><code>delayWhen(delayDurationSelector: function, subscriptionDelay?: Observable<any>)</code></td>
     </tr>
+    <tr>
+      <td rowspan="2"><code>timeout</code></td>
+      <td><code>timeout(dueTime: number | Date, other?: Error, scheduler?: Scheduler)</code></td>
+      <td><code>timeout(due: number | Date, errorToSend?: any, scheduler?: Scheduler)</code></td>
+    </tr>
+    <tr>
+      <td><code>timeout(dueTime: number | Date, other?: Observable | Promise, scheduler?: Scheduler)</code></td>
+      <td><code>timeoutWith(due: number | Date, withObservable: ObservableInput, scheduler: Scheduler)</code></td>
+    </tr>
+    <tr>
+      <td rowspan="2"><code>sample</code></td>
+      <td><code>sample(interval: number, scheduler?: Scheduler)</code></td>
+      <td><code>sampleTime(interval: number, scheduler?: Scheduler)</code></td>
+    </tr>
+    <tr>
+      <td><code>sample(notifier: Observable)</code></td>
+      <td><code>sample(notifier: Observable)</code></td>
+    </tr>
   </tbody>
 </table>
+
+
+## Operator Interface Changes
+
+
+<table>
+  <thead>
+    <tr>
+      <th></th>
+      <th>RxJS 4</th>
+      <th>RxJS 5</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>distinctUntilChanged</code></td>
+      <td><code>distinctUntilChanged(keySelector: function, comparer: function)</code></td>
+      <td><code>distinctUntilChanged<T, K>(compare?: (x: K, y: K) => boolean, keySelector?: (x: T) => K): Observable<T></code></td>
+    </tr>
+  </tbody>
+</table>
+
+
+## Default Scheduling Changed
+
+RxJS v4 defaulted to a scheduler called `Rx.Scheduler.asap` which schedules on the micro task queue. RxJS v5 however defaults to having no scheduler at all; v4 called this `Rx.Scheduler.immediate`. This was done to increase performance for the most common use cases.
 
 
 ## Schedulers Renamed
@@ -225,7 +286,7 @@ To reduce polymorphism and get better performance out of operators, some operato
 The names of the Schedulers in RxJS 4 were based off of the Rx.NET implementation. Consequently, some of the names
 didn't make sense in a JavaScript context (for example: `currentThread` when there's only one thread anyhow).
 
-|RxJS 4|RxJS 5||
+|RxJS 4|RxJS 5| |
 |------|------|---|
 |`Rx.Scheduler.default`|`Rx.Scheduler.asap`|schedules on the micro task queue|
 |`Rx.Scheduler.currentThread`|`Rx.Scheduler.queue`|schedules on a queue in the current event frame (trampoline scheduler)|

@@ -1,6 +1,14 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import * as sinon from 'sinon';
+import { createObservableInputs } from '../helpers/test-helper';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 declare const rxTestSchdeuler: Rx.TestScheduler;
 const Observable = Rx.Observable;
@@ -8,9 +16,9 @@ const Observable = Rx.Observable;
 /** @test {catch} */
 describe('Observable.prototype.catch', () => {
   asDiagram('catch')('should catch error and replace with a cold Observable', () => {
-    const e1 =   hot('--a--b--#        ');
-    const e2 =  cold('-1-2-3-|         ');
-    const expected = '--a--b---1-2-3-|)';
+    const e1 =   hot('--a--b--#       ');
+    const e2 =  cold(        '-1-2-3-|');
+    const expected = '--a--b---1-2-3-|';
 
     const result = e1.catch((err: any) => e2);
 
@@ -82,6 +90,36 @@ describe('Observable.prototype.catch', () => {
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
+  it('should unsubscribe from a caught hot caught observable when unsubscribed explicitly', () => {
+    const e1 =   hot('-1-2-3-#          ');
+    const e1subs =   '^      !          ';
+    const e2 =   hot('---3-4-5-6-7-8-9-|');
+    const e2subs =   '       ^    !     ';
+    const expected = '-1-2-3-5-6-7-     ';
+    const unsub =    '            !     ';
+
+    const result = e1.catch(() => e2);
+
+    expectObservable(result, unsub).toBe(expected);
+    expectSubscriptions(e1.subscriptions).toBe(e1subs);
+    expectSubscriptions(e2.subscriptions).toBe(e2subs);
+  });
+
+  it('should unsubscribe from a caught cold caught observable when unsubscribed explicitly', () => {
+    const e1 =   hot('-1-2-3-#          ');
+    const e1subs =   '^      !          ';
+    const e2 =  cold(       '5-6-7-8-9-|');
+    const e2subs =   '       ^    !     ';
+    const expected = '-1-2-3-5-6-7-     ';
+    const unsub =    '            !     ';
+
+    const result = e1.catch(() => e2);
+
+    expectObservable(result, unsub).toBe(expected);
+    expectSubscriptions(e1.subscriptions).toBe(e1subs);
+    expectSubscriptions(e2.subscriptions).toBe(e2subs);
+  });
+
   it('should catch error and replace it with a hot Observable', () => {
     const e1 =   hot('--a--b--#          ');
     const e1subs =   '^       !          ';
@@ -100,8 +138,8 @@ describe('Observable.prototype.catch', () => {
   '(caught) argument', () => {
     const e1 =  cold('--a--b--c--------|       ');
     const subs =    ['^       !                ',
-                   '        ^       !        ',
-                   '                ^       !'];
+                     '        ^       !        ',
+                     '                ^       !'];
     const expected = '--a--b----a--b----a--b--#';
 
     let retries = 0;
@@ -127,7 +165,7 @@ describe('Observable.prototype.catch', () => {
   '(caught) argument', () => {
     const e1 =   hot('--a--b--c----d---|');
     const subs =    ['^       !         ',
-                   '        ^        !'];
+                     '        ^        !'];
     const expected = '--a--b-------d---|';
 
     let retries = 0;
@@ -227,4 +265,97 @@ describe('Observable.prototype.catch', () => {
           done();
         });
   });
+
+  it('should accept selector returns any ObservableInput', (done: MochaDone) => {
+    const input$ = createObservableInputs(42);
+
+    input$.mergeMap(input =>
+      Observable.throw('bad').catch(err => input)
+    ).subscribe(x => {
+      expect(x).to.be.equal(42);
+    }, (err: any) => {
+      done(new Error('should not be called'));
+    }, () => {
+      done();
+    });
+  });
+
+  context('fromPromise', () => {
+    type SetTimeout = (callback: (...args: any[]) => void, ms: number, ...args: any[]) => NodeJS.Timer;
+
+    let trueSetTimeout: SetTimeout;
+    let sandbox: sinon.SinonSandbox;
+    let timers: sinon.SinonFakeTimers;
+
+    beforeEach(() => {
+      trueSetTimeout = global.setTimeout;
+      sandbox = sinon.sandbox.create();
+      timers = sandbox.useFakeTimers();
+    });
+
+    afterEach(() => {
+      sandbox.restore();
+    });
+
+    it('should chain a throw from a promise using throw', (done: MochaDone) => {
+      const subscribeSpy = sinon.spy();
+      const testError = new Error('BROKEN PROMISE');
+      Observable.fromPromise(Promise.reject(testError)).catch(err => {
+        throw new Error('BROKEN THROW');
+      }).subscribe(subscribeSpy);
+
+      trueSetTimeout(() => {
+        try {
+          timers.tick(1);
+        } catch (e) {
+          expect(subscribeSpy).not.to.be.called;
+          expect(e.message).to.equal('BROKEN THROW');
+          return done();
+        }
+        done(new Error('This should have thrown an error'));
+      }, 0);
+    });
+
+    it('should chain a throw from a promise using Observable.throw', (done: MochaDone) => {
+      const subscribeSpy = sinon.spy();
+      const testError = new Error('BROKEN PROMISE');
+      Observable.fromPromise(Promise.reject(testError)).catch(err =>
+        Observable.throw(new Error('BROKEN THROW'))
+      ).subscribe(subscribeSpy);
+
+      trueSetTimeout(() => {
+        try {
+          timers.tick(1);
+        } catch (e) {
+          expect(subscribeSpy).not.to.be.called;
+          expect(e.message).to.equal('BROKEN THROW');
+          return done();
+        }
+        done(new Error('This should have thrown an error'));
+      }, 0);
+    });
+
+    it('should chain a throw from a promise using Observable.throw', (done: MochaDone) => {
+      const subscribeSpy = sinon.spy();
+      const errorSpy = sinon.spy();
+      const thrownError = new Error('BROKEN THROW');
+      const testError = new Error('BROKEN PROMISE');
+      Observable.fromPromise(Promise.reject(testError)).catch(err =>
+        Observable.throw(thrownError)
+      ).subscribe(subscribeSpy, errorSpy);
+
+      trueSetTimeout(() => {
+        try {
+          timers.tick(1);
+        } catch (e) {
+          return done(new Error('This should not have thrown an error'));
+        }
+        expect(subscribeSpy).not.to.be.called;
+        expect(errorSpy).to.have.been.called;
+        expect(errorSpy).to.have.been.calledWith(thrownError);
+        done();
+      }, 0);
+    });
+  });
+
 });

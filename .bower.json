@@ -1,0 +1,15 @@
+{
+  "name": "reactivex-rxjs",
+  "homepage": "https://github.com/ReactiveX/RxJS",
+  "version": "5.5.11",
+  "_release": "5.5.11",
+  "_resolution": {
+    "type": "version",
+    "tag": "5.5.11",
+    "commit": "b5ed59d8626376d16ac09aa98ac9c00835340fe3"
+  },
+  "_source": "https://github.com/ReactiveX/RxJS.git",
+  "_target": "5.5.11",
+  "_originalSource": "reactivex-rxjs",
+  "_direct": true
+}

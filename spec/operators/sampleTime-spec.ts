@@ -1,18 +1,24 @@
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
 
 declare const rxTestScheduler: Rx.TestScheduler;
 const Observable = Rx.Observable;
 
 /** @test {sampleTime} */
 describe('Observable.prototype.sampleTime', () => {
-  asDiagram('sampleTime(110)')('should get samples on a delay', () => {
-    const e1 =   hot('----a-^--b----c----d----e----f----|');
-    const e1subs =         '^                           !';
-    const expected =       '-----------c----------e-----|';
-    // timer              -----------!----------!---------
+  asDiagram('sampleTime(70)')('should get samples on a delay', () => {
+    const e1 =   hot('a---b-c---------d--e---f-g-h--|');
+    const e1subs =   '^                             !';
+    const expected = '-------c-------------e------h-|';
+    // timer          -------!------!------!------!--
 
-    expectObservable(e1.sampleTime(110, rxTestScheduler)).toBe(expected);
+    expectObservable(e1.sampleTime(70, rxTestScheduler)).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 

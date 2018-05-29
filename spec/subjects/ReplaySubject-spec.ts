@@ -1,7 +1,10 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-import {TestScheduler} from '../../dist/cjs/testing/TestScheduler';
-declare const {hot, expectObservable};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import { TestScheduler } from '../../dist/package/testing/TestScheduler';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
+
+declare const hot: typeof marbleTestingSignature.hot;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
 
 declare const rxTestScheduler: TestScheduler;
 
@@ -10,10 +13,24 @@ const Observable = Rx.Observable;
 
 /** @test {ReplaySubject} */
 describe('ReplaySubject', () => {
-  it('should extend Subject', (done: MochaDone) => {
+  it('should extend Subject', () => {
     const subject = new ReplaySubject();
-    expect(subject instanceof Rx.Subject).to.be.true;
-    done();
+    expect(subject).to.be.instanceof(Rx.Subject);
+  });
+
+  it('should add the observer before running subscription code', () => {
+    const subject = new ReplaySubject<number>();
+    subject.next(1);
+    const results = [];
+
+    subject.subscribe((value) => {
+      results.push(value);
+      if (value < 3) {
+        subject.next(value + 1);
+      }
+    });
+
+    expect(results).to.deep.equal([1, 2, 3]);
   });
 
   it('should replay values upon subscription', (done: MochaDone) => {
@@ -222,21 +239,21 @@ describe('ReplaySubject', () => {
     });
   });
 
-  it('should be an Observer which can be given to Observable.subscribe', (done: MochaDone) => {
+  it('should be an Observer which can be given to Observable.subscribe', () => {
     const source = Observable.of(1, 2, 3, 4, 5);
     const subject = new ReplaySubject(3);
-    const expected = [3, 4, 5];
+    let results = [];
+
+    subject.subscribe(x => results.push(x), null, () => results.push('done'));
 
     source.subscribe(subject);
 
-    subject.subscribe(
-      (x: number) => {
-        expect(x).to.equal(expected.shift());
-      }, () => {
-        done(new Error());
-      }, () => {
-        done();
-      }
-    );
+    expect(results).to.deep.equal([1, 2, 3, 4, 5, 'done']);
+
+    results = [];
+
+    subject.subscribe(x => results.push(x), null, () => results.push('done'));
+
+    expect(results).to.deep.equal([3, 4, 5, 'done']);
   });
 });

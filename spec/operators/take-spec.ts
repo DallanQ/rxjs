@@ -1,7 +1,14 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from '../../dist/package/Rx';
+import marbleTestingSignature = require('../helpers/marble-testing'); // tslint:disable-line:no-require-imports
 
+declare const { asDiagram };
+declare const hot: typeof marbleTestingSignature.hot;
+declare const cold: typeof marbleTestingSignature.cold;
+declare const expectObservable: typeof marbleTestingSignature.expectObservable;
+declare const expectSubscriptions: typeof marbleTestingSignature.expectSubscriptions;
+
+const Subject = Rx.Subject;
 const Observable = Rx.Observable;
 
 /** @test {take} */
@@ -128,11 +135,26 @@ describe('Observable.prototype.take', () => {
 
   it('should unsubscribe from the source when it reaches the limit', () => {
     const source = Observable.create(observer => {
-      expect(observer.isUnsubscribed).to.be.false;
+      expect(observer.closed).to.be.false;
       observer.next(42);
-      expect(observer.isUnsubscribed).to.be.true;
+      expect(observer.closed).to.be.true;
     }).take(1);
 
     source.subscribe();
+  });
+
+  it('should complete when the source is reentrant', () => {
+    let completed = false;
+    const source = new Subject();
+    source.take(5).subscribe({
+      next() {
+        source.next();
+      },
+      complete() {
+        completed = true;
+      }
+    });
+    source.next();
+    expect(completed).to.be.true;
   });
 });
