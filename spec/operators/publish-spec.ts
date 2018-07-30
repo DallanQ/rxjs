@@ -1,15 +1,17 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+import { publish, zip, mergeMapTo, mergeMap, tap, refCount, retry, repeat, map } from 'rxjs/operators';
+import { ConnectableObservable, of, Subscription, Observable } from 'rxjs';
 
-const Observable = Rx.Observable;
+declare function asDiagram(arg: string): Function;
+declare const type: Function;
 
 /** @test {publish} */
-describe('Observable.prototype.publish', () => {
+describe('publish operator', () => {
   asDiagram('publish')('should mirror a simple source Observable', () => {
     const source = cold('--1-2---3-4--5-|');
     const sourceSubs =  '^              !';
-    const published = source.publish();
+    const published = source.pipe(publish()) as ConnectableObservable<any>;
     const expected =    '--1-2---3-4--5-|';
 
     expectObservable(published).toBe(expected);
@@ -18,40 +20,18 @@ describe('Observable.prototype.publish', () => {
     published.connect();
   });
 
-  it('To match RxJS 4 behavior, it should NOT allow you to reconnect by subscribing again', (done: MochaDone) => {
-    const expected = [1, 2, 3, 4];
-    let i = 0;
-
-    const source = Observable.of(1, 2, 3, 4).publish();
-
-    source.subscribe((x: number) => {
-      expect(x).to.equal(expected[i++]);
-    }, (x) => {
-      done(new Error('should not be called'));
-    }, () => {
-      source.subscribe((x: any) => {
-        done(new Error('should not be called'));
-      }, (x) => {
-        done(new Error('should not be called'));
-      }, () => {
-        done();
-      });
-
-      source.connect();
-    });
-
-    expect(() => source.connect()).to.throw(Rx.ObjectUnsubscribedError);
-  });
-
-  it('should return a ConnectableObservable', () => {
-    const source = Observable.of(1).publish();
-    expect(source instanceof Rx.ConnectableObservable).to.be.true;
+  it('should return a ConnectableObservable-ish', () => {
+    const source = of(1).pipe(publish()) as ConnectableObservable<number>;
+    expect(typeof (<any> source)._subscribe === 'function').to.be.true;
+    expect(typeof (<any> source).getSubject === 'function').to.be.true;
+    expect(typeof source.connect === 'function').to.be.true;
+    expect(typeof source.refCount === 'function').to.be.true;
   });
 
   it('should do nothing if connect is not called, despite subscriptions', () => {
     const source = cold('--1-2---3-4--5-|');
-    const sourceSubs = [];
-    const published = source.publish();
+    const sourceSubs: string[] = [];
+    const published = source.pipe(publish());
     const expected =    '-';
 
     expectObservable(published).toBe(expected);
@@ -61,7 +41,7 @@ describe('Observable.prototype.publish', () => {
   it('should multicast the same values to multiple observers', () => {
     const source =     cold('-1-2-3----4-|');
     const sourceSubs =      '^           !';
-    const published = source.publish();
+    const published = source.pipe(publish()) as ConnectableObservable<string>;
     const subscriber1 = hot('a|           ').mergeMapTo(published);
     const expected1   =     '-1-2-3----4-|';
     const subscriber2 = hot('    b|       ').mergeMapTo(published);
@@ -77,15 +57,34 @@ describe('Observable.prototype.publish', () => {
     published.connect();
   });
 
+  it('should accept selectors', () => {
+    const source =     hot('-1-2-3----4-|');
+    const sourceSubs =     ['^           !',
+                            '    ^       !',
+                            '        ^   !'];
+    const published = source.pipe(publish(x => x.pipe(zip(x, (a, b) => (parseInt(a) + parseInt(b)).toString()))));
+    const subscriber1 = hot('a|           ').pipe(mergeMapTo(published));
+    const expected1   =     '-2-4-6----8-|';
+    const subscriber2 = hot('    b|       ').pipe(mergeMapTo(published));
+    const expected2   =     '    -6----8-|';
+    const subscriber3 = hot('        c|   ').pipe(mergeMapTo(published));
+    const expected3   =     '        --8-|';
+
+    expectObservable(subscriber1).toBe(expected1);
+    expectObservable(subscriber2).toBe(expected2);
+    expectObservable(subscriber3).toBe(expected3);
+    expectSubscriptions(source.subscriptions).toBe(sourceSubs);
+  });
+
   it('should multicast an error from the source to multiple observers', () => {
     const source =     cold('-1-2-3----4-#');
     const sourceSubs =      '^           !';
-    const published = source.publish();
-    const subscriber1 = hot('a|           ').mergeMapTo(published);
+    const published = source.pipe(publish()) as ConnectableObservable<string>;
+    const subscriber1 = hot('a|           ').pipe(mergeMapTo(published));
     const expected1   =     '-1-2-3----4-#';
-    const subscriber2 = hot('    b|       ').mergeMapTo(published);
+    const subscriber2 = hot('    b|       ').pipe(mergeMapTo(published));
     const expected2   =     '    -3----4-#';
-    const subscriber3 = hot('        c|   ').mergeMapTo(published);
+    const subscriber3 = hot('        c|   ').pipe(mergeMapTo(published));
     const expected3   =     '        --4-#';
 
     expectObservable(subscriber1).toBe(expected1);
@@ -100,13 +99,13 @@ describe('Observable.prototype.publish', () => {
   'but is unsubscribed explicitly and early', () => {
     const source =     cold('-1-2-3----4-|');
     const sourceSubs =      '^        !   ';
-    const published = source.publish();
+    const published = source.pipe(publish()) as ConnectableObservable<string>;
     const unsub =           '         u   ';
-    const subscriber1 = hot('a|           ').mergeMapTo(published);
+    const subscriber1 = hot('a|           ').pipe(mergeMapTo(published));
     const expected1   =     '-1-2-3----   ';
-    const subscriber2 = hot('    b|       ').mergeMapTo(published);
+    const subscriber2 = hot('    b|       ').pipe(mergeMapTo(published));
     const expected2   =     '    -3----   ';
-    const subscriber3 = hot('        c|   ').mergeMapTo(published);
+    const subscriber3 = hot('        c|   ').pipe(mergeMapTo(published));
     const expected3   =     '        --   ';
 
     expectObservable(subscriber1).toBe(expected1);
@@ -115,10 +114,10 @@ describe('Observable.prototype.publish', () => {
     expectSubscriptions(source.subscriptions).toBe(sourceSubs);
 
     // Set up unsubscription action
-    let connection;
-    expectObservable(hot(unsub).do(() => {
+    let connection: Subscription;
+    expectObservable(hot(unsub).pipe(tap(() => {
       connection.unsubscribe();
-    })).toBe(unsub);
+    }))).toBe(unsub);
 
     connection = published.connect();
   });
@@ -126,14 +125,15 @@ describe('Observable.prototype.publish', () => {
   it('should not break unsubscription chains when result is unsubscribed explicitly', () => {
     const source =     cold('-1-2-3----4-|');
     const sourceSubs =      '^        !   ';
-    const published = source
-      .mergeMap((x: any) => Observable.of(x))
-      .publish();
-    const subscriber1 = hot('a|           ').mergeMapTo(published);
+    const published = source.pipe(
+      mergeMap((x) => of(x)),
+      publish()
+    ) as ConnectableObservable<any>;
+    const subscriber1 = hot('a|           ').pipe(mergeMapTo(published));
     const expected1   =     '-1-2-3----   ';
-    const subscriber2 = hot('    b|       ').mergeMapTo(published);
+    const subscriber2 = hot('    b|       ').pipe(mergeMapTo(published));
     const expected2   =     '    -3----   ';
-    const subscriber3 = hot('        c|   ').mergeMapTo(published);
+    const subscriber3 = hot('        c|   ').pipe(mergeMapTo(published));
     const expected3   =     '        --   ';
     const unsub =           '         u   ';
 
@@ -143,10 +143,10 @@ describe('Observable.prototype.publish', () => {
     expectSubscriptions(source.subscriptions).toBe(sourceSubs);
 
     // Set up unsubscription action
-    let connection;
-    expectObservable(hot(unsub).do(() => {
+    let connection: Subscription;
+    expectObservable(hot(unsub).pipe(tap(() => {
       connection.unsubscribe();
-    })).toBe(unsub);
+    }))).toBe(unsub);
 
     connection = published.connect();
   });
@@ -155,12 +155,15 @@ describe('Observable.prototype.publish', () => {
     it('should connect when first subscriber subscribes', () => {
       const source =     cold(   '-1-2-3----4-|');
       const sourceSubs =      '   ^           !';
-      const replayed = source.publish().refCount();
-      const subscriber1 = hot('   a|           ').mergeMapTo(replayed);
+      const replayed = source.pipe(
+        publish(),
+        refCount()
+      );
+      const subscriber1 = hot('   a|           ').pipe(mergeMapTo(replayed));
       const expected1   =     '   -1-2-3----4-|';
-      const subscriber2 = hot('       b|       ').mergeMapTo(replayed);
+      const subscriber2 = hot('       b|       ').pipe(mergeMapTo(replayed));
       const expected2   =     '       -3----4-|';
-      const subscriber3 = hot('           c|   ').mergeMapTo(replayed);
+      const subscriber3 = hot('           c|   ').pipe(mergeMapTo(replayed));
       const expected3   =     '           --4-|';
 
       expectObservable(subscriber1).toBe(expected1);
@@ -173,10 +176,10 @@ describe('Observable.prototype.publish', () => {
       const source =     cold(   '-1-2-3----4-|');
       const sourceSubs =      '   ^        !   ';
       const replayed = source.publish().refCount();
-      const subscriber1 = hot('   a|           ').mergeMapTo(replayed);
+      const subscriber1 = hot('   a|           ').pipe(mergeMapTo(replayed));
       const unsub1 =          '          !     ';
       const expected1   =     '   -1-2-3--     ';
-      const subscriber2 = hot('       b|       ').mergeMapTo(replayed);
+      const subscriber2 = hot('       b|       ').pipe(mergeMapTo(replayed));
       const unsub2 =          '            !   ';
       const expected2   =     '       -3----   ';
 
@@ -188,12 +191,16 @@ describe('Observable.prototype.publish', () => {
     it('should NOT be retryable', () => {
       const source =     cold('-1-2-3----4-#');
       const sourceSubs =      '^           !';
-      const published = source.publish().refCount().retry(3);
-      const subscriber1 = hot('a|           ').mergeMapTo(published);
+      const published = source.pipe(
+        publish(),
+        refCount(),
+        retry(3)
+      );
+      const subscriber1 = hot('a|           ').pipe(mergeMapTo(published));
       const expected1   =     '-1-2-3----4-#';
-      const subscriber2 = hot('    b|       ').mergeMapTo(published);
+      const subscriber2 = hot('    b|       ').pipe(mergeMapTo(published));
       const expected2   =     '    -3----4-#';
-      const subscriber3 = hot('        c|   ').mergeMapTo(published);
+      const subscriber3 = hot('        c|   ').pipe(mergeMapTo(published));
       const expected3   =     '        --4-#';
 
       expectObservable(subscriber1).toBe(expected1);
@@ -205,12 +212,16 @@ describe('Observable.prototype.publish', () => {
     it('should NOT be repeatable', () => {
       const source =     cold('-1-2-3----4-|');
       const sourceSubs =      '^           !';
-      const published = source.publish().refCount().repeat(3);
-      const subscriber1 = hot('a|           ').mergeMapTo(published);
+      const published = source.pipe(
+        publish(),
+        refCount(),
+        repeat(3)
+      );
+      const subscriber1 = hot('a|           ').pipe(mergeMapTo(published));
       const expected1   =     '-1-2-3----4-|';
-      const subscriber2 = hot('    b|       ').mergeMapTo(published);
+      const subscriber2 = hot('    b|       ').pipe(mergeMapTo(published));
       const expected2   =     '    -3----4-|';
-      const subscriber3 = hot('        c|   ').mergeMapTo(published);
+      const subscriber3 = hot('        c|   ').pipe(mergeMapTo(published));
       const expected3   =     '        --4-|';
 
       expectObservable(subscriber1).toBe(expected1);
@@ -220,12 +231,12 @@ describe('Observable.prototype.publish', () => {
     });
   });
 
-  it('should emit completed when subscribed after completed', (done: MochaDone) => {
-    const results1 = [];
-    const results2 = [];
+  it('should emit completed when subscribed after completed', (done) => {
+    const results1: number[] = [];
+    const results2: number[] = [];
     let subscriptions = 0;
 
-    const source = new Observable((observer: Rx.Observer<number>) => {
+    const source = new Observable<number>((observer) => {
       subscriptions++;
       observer.next(1);
       observer.next(2);
@@ -234,9 +245,9 @@ describe('Observable.prototype.publish', () => {
       observer.complete();
     });
 
-    const connectable = source.publish();
+    const connectable = source.pipe(publish()) as ConnectableObservable<number>;
 
-    connectable.subscribe((x: any) => {
+    connectable.subscribe((x) => {
       results1.push(x);
     });
 
@@ -249,7 +260,7 @@ describe('Observable.prototype.publish', () => {
     expect(results2).to.deep.equal([]);
     expect(subscriptions).to.equal(1);
 
-    connectable.subscribe((x: any) => {
+    connectable.subscribe((x) => {
       results2.push(x);
     }, (x) => {
       done(new Error('should not be called'));
@@ -262,7 +273,7 @@ describe('Observable.prototype.publish', () => {
   it('should multicast an empty source', () => {
     const source = cold('|');
     const sourceSubs =  '(^!)';
-    const published = source.publish();
+    const published = source.pipe(publish()) as ConnectableObservable<string>;
     const expected =    '|';
 
     expectObservable(published).toBe(expected);
@@ -274,7 +285,7 @@ describe('Observable.prototype.publish', () => {
   it('should multicast a never source', () => {
     const source = cold('-');
     const sourceSubs =  '^';
-    const published = source.publish();
+    const published = source.pipe(publish()) as ConnectableObservable<string>;
     const expected =    '-';
 
     expectObservable(published).toBe(expected);
@@ -286,7 +297,7 @@ describe('Observable.prototype.publish', () => {
   it('should multicast a throw source', () => {
     const source = cold('#');
     const sourceSubs =  '(^!)';
-    const published = source.publish();
+    const published = source.pipe(publish()) as ConnectableObservable<string>;
     const expected =    '#';
 
     expectObservable(published).toBe(expected);
@@ -295,12 +306,12 @@ describe('Observable.prototype.publish', () => {
     published.connect();
   });
 
-  it('should multicast one observable to multiple observers', (done: MochaDone) => {
-    const results1 = [];
-    const results2 = [];
+  it('should multicast one observable to multiple observers', (done) => {
+    const results1: number[] = [];
+    const results2: number[] = [];
     let subscriptions = 0;
 
-    const source = new Observable((observer: Rx.Observer<number>) => {
+    const source = new Observable<number>((observer) => {
       subscriptions++;
       observer.next(1);
       observer.next(2);
@@ -309,13 +320,13 @@ describe('Observable.prototype.publish', () => {
       observer.complete();
     });
 
-    const connectable = source.publish();
+    const connectable = source.pipe(publish()) as ConnectableObservable<number>;
 
-    connectable.subscribe((x: any) => {
+    connectable.subscribe((x) => {
       results1.push(x);
     });
 
-    connectable.subscribe((x: any) => {
+    connectable.subscribe((x) => {
       results2.push(x);
     });
 
@@ -328,5 +339,48 @@ describe('Observable.prototype.publish', () => {
     expect(results2).to.deep.equal([1, 2, 3, 4]);
     expect(subscriptions).to.equal(1);
     done();
+  });
+
+  type('should infer the type', () => {
+    /* tslint:disable:no-unused-variable */
+    const source = of<number>(1, 2, 3);
+    const result: ConnectableObservable<number> = source.pipe(publish()) as ConnectableObservable<number>;
+    /* tslint:enable:no-unused-variable */
+  });
+
+  type('should infer the type with a selector', () => {
+    /* tslint:disable:no-unused-variable */
+    const source = of<number>(1, 2, 3);
+    const result: Observable<number> = source.pipe(publish(s => s.pipe(map(x => x))));
+    /* tslint:enable:no-unused-variable */
+  });
+
+  type('should infer the type with a type-changing selector', () => {
+    /* tslint:disable:no-unused-variable */
+    const source = of<number>(1, 2, 3);
+    const result: Observable<string> = source.pipe(publish(s => s.pipe(map(x => x + '!'))));
+    /* tslint:enable:no-unused-variable */
+  });
+
+  type('should infer the type for the pipeable operator', () => {
+    /* tslint:disable:no-unused-variable */
+    const source = of<number>(1, 2, 3);
+    // TODO: https://github.com/ReactiveX/rxjs/issues/2972
+    const result: ConnectableObservable<number> = publish<number>()(source);
+    /* tslint:enable:no-unused-variable */
+  });
+
+  type('should infer the type for the pipeable operator with a selector', () => {
+    /* tslint:disable:no-unused-variable */
+    const source = of<number>(1, 2, 3);
+    const result: Observable<number> = source.pipe(publish(s => s.map(x => x)));
+    /* tslint:enable:no-unused-variable */
+  });
+
+  type('should infer the type for the pipeable operator with a type-changing selector', () => {
+    /* tslint:disable:no-unused-variable */
+    const source = of<number>(1, 2, 3);
+    const result: Observable<string> = source.pipe(publish(s => s.pipe(map(x => x + '!'))));
+    /* tslint:enable:no-unused-variable */
   });
 });

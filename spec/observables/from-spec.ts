@@ -1,233 +1,160 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-import {$$iterator} from '../../dist/cjs/symbol/iterator';
+import { expect } from 'chai';
+import { TestScheduler } from 'rxjs/testing';
+import { asyncScheduler, of, from, Observable, asapScheduler, Observer, observable, Subject } from 'rxjs';
+import { first } from 'rxjs/operators';
 
-declare const {expectObservable, Symbol, type};
-declare const rxTestScheduler: Rx.TestScheduler;
-const Observable = Rx.Observable;
+// tslint:disable:no-any
+declare const asDiagram: any;
+declare const expectObservable: any;
+declare const type: any;
+declare const rxTestScheduler: TestScheduler;
+// tslint:enable:no-any
+
+function getArguments<T>(...args: T[]) {
+  return arguments;
+}
 
 /** @test {from} */
-describe('Observable.from', () => {
-  it('should enumerate an Array', function (done: MochaDone) {
-    this.timeout(300);
-
-    const expected = [1, 2, 3];
-    let i = 0;
-
-    Observable.from(expected).subscribe((x: number) => {
-      expect(x).to.equal(expected[i++]);
-    }, (x) => {
-      done(new Error('should not be called'));
-    }, () => {
-      done();
-    });
-  });
-
-  it('should handle an ArrayLike', function (done: MochaDone) {
-    this.timeout(300);
-
-    const arrayLike: ArrayLike<number> = {
-      length: 3,
-      0: 1,
-      1: 2,
-      2: 3
-    };
-    const expected = [1, 2, 3];
-
-    Observable.from(arrayLike).subscribe((x: number) =>  {
-      expect(x).to.equal(expected.shift());
-    }, (x) => {
-      done(new Error('should not be called'));
-    }, () => {
-      done();
-    });
-  });
-
-  it('should handle an ArrayLike from arguments', function (done: MochaDone) {
-    this.timeout(300);
-
-    function makeArrayLike(...args) {
-      const expected = [1, 2, 3];
-
-      Observable.from(arguments).subscribe((x: number) => {
-        expect(x).to.equal(expected.shift());
-      }, (x) => {
-        done(new Error('should not be called'));
-      }, () => {
-        done();
-      });
-    }
-
-    makeArrayLike(1, 2, 3);
-  });
-
-  it('should handle an ArrayLike with a mapFn', function (done: MochaDone) {
-    this.timeout(300);
-
-    const arrayLike: ArrayLike<number> = {
-      length: 3,
-      0: 1,
-      1: 2,
-      2: 3
-    };
-    const expected = [1, 1, 1];
-    const mapFn = (v, k) => v - k;
-
-    Observable.from(arrayLike, mapFn).subscribe((x: number) =>  {
-      expect(x).to.equal(expected.shift());
-    }, (x) => {
-      done(new Error('should not be called'));
-    }, () => {
-      done();
-    });
-  });
-
-  it('should handle an ArrayLike with a thisArg', (done: MochaDone) => {
-    const arrayLike: ArrayLike<number> = {
-      length: 3,
-      0: 1,
-      1: 2,
-      2: 3
-    };
-    const expected = [123, 123, 123];
-    const mapFn = function (x, y) {
-      return this.thing;
-    };
-
-    Observable.from(arrayLike, mapFn, {thing: 123}).subscribe((x: number) =>  {
-      expect(x).to.equal(expected.shift());
-    }, (x) => {
-      done(new Error('should not be called'));
-    }, () => {
-      done();
-    });
-  });
-
-  it('should handle a promise', (done: MochaDone) => {
-    const promise = Promise.resolve('pinky swear');
-
-    Observable.from(promise).subscribe((x: string) =>  {
-      expect(x).to.equal('pinky swear');
-    }, (x) => {
-      done(new Error('should not be called'));
-    }, () => {
-      done();
-    });
-  });
-
-  it('should handle an "observableque" object', (done: MochaDone) => {
-    const observablesque = <any>{};
-
-    observablesque[Symbol.observable] = () => {
-      return {
-        subscribe: (observer: Rx.Observer<string>) => {
-          observer.next('test');
-          observer.complete();
-        }
-      };
-    };
-
-    Observable.from(observablesque).subscribe((x: string) =>  {
-      expect(x).to.equal('test');
-    }, (x) => {
-      done(new Error('should not be called'));
-    }, () => {
-      done();
-    });
-  });
-
-  it('should accept scheduler for observableque object', () => {
-    const observablesque = <any>{};
-
-    observablesque[Symbol.observable] = () => {
-      return {
-        subscribe: (observer: Rx.Observer<string>) => {
-          observer.next('x');
-          observer.complete();
-        }
-      };
-    };
-
-    const e1 = Observable.from(observablesque, rxTestScheduler);
-    const expected = '(x|)';
-
-    expectObservable(e1).toBe(expected);
-  });
-
-  it('should handle a string', (done: MochaDone) => {
-    const expected = ['a', 'b', 'c'];
-    Observable.from('abc').subscribe((x: string) =>  {
-      expect(x).to.equal(expected.shift());
-    }, (x) => {
-      done(new Error('should not be called'));
-    }, () => {
-      done();
-    });
-  });
-
-  it('should handle any iterable thing', (done: MochaDone) => {
-    const iterable = <any>{};
-    const iteratorResults = [
-      { value: 'one', done: false },
-      { value: 'two', done: false },
-      { done: true }
-    ];
-    const expected = ['one', 'two'];
-
-    expect($$iterator).to.equal(Symbol.iterator);
-
-    iterable[Symbol.iterator] = () => {
-      return {
-        next: () => {
-          return iteratorResults.shift();
-        }
-      };
-    };
-
-    Observable.from(iterable).subscribe((x: string) =>  {
-      expect(x).to.equal(expected.shift());
-    }, (x) => {
-      done(new Error('should not be called'));
-    }, () => {
-      done();
-    });
+describe('from', () => {
+  asDiagram('from([10, 20, 30])')
+  ('should create an observable from an array', () => {
+    const e1 = from([10, 20, 30])
+      // for the purpose of making a nice diagram, spread out the synchronous emissions
+      .concatMap((x, i) => of(x).delay(i === 0 ? 0 : 20, rxTestScheduler));
+    const expected = 'x-y-(z|)';
+    expectObservable(e1).toBe(expected, {x: 10, y: 20, z: 30});
   });
 
   it('should throw for non observable object', () => {
     const r = () => {
-      Observable.from(<any>{}).subscribe();
+      // tslint:disable-next-line:no-any needed for the test
+      from({} as any).subscribe();
     };
 
     expect(r).to.throw();
   });
 
-  it('should handle object has observable symbol', (done: MochaDone) => {
-    const value = 'x';
-
-    Observable.from(Observable.of(value)).subscribe((x: string) =>  {
-      expect(x).to.equal(value);
-    }, (err: any) => {
-      done(new Error('should not be called'));
-    }, () => {
-      done();
-    });
+  type('should return T for InteropObservable objects', () => {
+    /* tslint:disable:no-unused-variable */
+    const o1: Observable<number> = from([] as number[], asapScheduler);
+    const o2: Observable<{ a: string }> = from(Observable.empty());
+    const o3: Observable<{ b: number }> = from(new Promise<{b: number}>(resolve => resolve()));
+    /* tslint:enable:no-unused-variable */
   });
 
-  it('should return T for ObservableLike objects', () => {
-    type(() => {
-      /* tslint:disable:no-unused-variable */
-      let o1: Rx.Observable<number> = Observable.from(<number[]>[], Rx.Scheduler.asap);
-      let o2: Rx.Observable<{ a: string }> = Observable.from(Observable.empty<{ a: string }>());
-      let o3: Rx.Observable<{ b: number }> = Observable.from(new Promise<{b: number}>(resolve => resolve()));
-      /* tslint:enable:no-unused-variable */
-    });
+  type('should return T for arrays', () => {
+    /* tslint:disable:no-unused-variable */
+    const o1: Observable<number> = from([] as number[], asapScheduler);
+    /* tslint:enable:no-unused-variable */
   });
 
-  it('should return T and map for arrays', () => {
-    type(() => {
-      /* tslint:disable:no-unused-variable */
-      let o1: Rx.Observable<number> = Observable.from(<number[]>[], x => x.toString(), null, Rx.Scheduler.asap);
-      /* tslint:enable:no-unused-variable */
-    });
+  const fakervable = <T>(...values: T[]) => ({
+    [Symbol.observable]: () => ({
+      subscribe: (observer: Observer<T>) => {
+        for (const value of values) {
+          observer.next(value);
+        }
+        observer.complete();
+      }
+    })
   });
+
+  const fakeArrayObservable = <T>(...values: T[]) => {
+    let arr = ['bad array!'];
+    arr[Symbol.observable] = () =>  {
+      return {
+        subscribe: (observer: Observer<T>) => {
+          for (const value of values) {
+            observer.next(value);
+          }
+          observer.complete();
+        }
+      };
+    };
+    return arr;
+  };
+
+  const fakerator = <T>(...values: T[]) => ({
+    [Symbol.iterator as symbol]: () => {
+      const clone = [...values];
+      return {
+        next: () => ({
+          done: clone.length <= 0,
+          value: clone.shift()
+        })
+      };
+    }
+  });
+
+  // tslint:disable-next-line:no-any it's silly to define all of these types.
+  const sources: Array<{ name: string, value: any }> = [
+    { name: 'observable', value: of('x') },
+    { name: 'observable-like', value: fakervable('x') },
+    { name: 'observable-like-array', value: fakeArrayObservable('x') },
+    { name: 'array', value: ['x'] },
+    { name: 'promise', value: Promise.resolve('x') },
+    { name: 'iterator', value: fakerator('x') },
+    { name: 'array-like', value: { [0]: 'x', length: 1 }},
+    { name: 'string', value: 'x'},
+    { name: 'arguments', value: getArguments('x') },
+  ];
+
+  for (const source of sources) {
+    it(`should accept ${source.name}`, (done) => {
+      let nextInvoked = false;
+      from(source.value)
+        .subscribe(
+          (x) => {
+            nextInvoked = true;
+            expect(x).to.equal('x');
+          },
+          (x) => {
+            done(new Error('should not be called'));
+          },
+          () => {
+            expect(nextInvoked).to.equal(true);
+            done();
+          }
+        );
+    });
+    it(`should accept ${source.name} and scheduler`, (done) => {
+      let nextInvoked = false;
+      from(source.value, asyncScheduler)
+        .subscribe(
+          (x) => {
+            nextInvoked = true;
+            expect(x).to.equal('x');
+          },
+          (x) => {
+            done(new Error('should not be called'));
+          },
+          () => {
+            expect(nextInvoked).to.equal(true);
+            done();
+          }
+        );
+      expect(nextInvoked).to.equal(false);
+    });
+    it(`should accept a function`, (done) => {
+      const subject = new Subject();
+      const handler = (...args: any[]) => subject.next(...args);
+      handler[observable] = () => subject;
+      let nextInvoked = false;
+
+      from((handler as any)).pipe(first()).subscribe(
+        (x) => {
+          nextInvoked = true;
+          expect(x).to.equal('x');
+        },
+        (x) => {
+          done(new Error('should not be called'));
+        },
+        () => {
+          expect(nextInvoked).to.equal(true);
+          done();
+        }
+      );
+      handler('x');
+    });
+  }
 });

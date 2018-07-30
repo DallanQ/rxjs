@@ -1,16 +1,17 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import { filter, tap, map, mergeMap } from 'rxjs/operators';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+import { of, Observable, from } from 'rxjs';
 
-const Observable = Rx.Observable;
+declare function asDiagram(arg: string): Function;
 
 /** @test {filter} */
-describe('Observable.prototype.filter', () => {
-  function oddFilter(x) {
+describe('filter operator', () => {
+  function oddFilter(x: number | string) {
     return (+x) % 2 === 1;
   }
 
-  function isPrime(i) {
+  function isPrime(i: number | string) {
     if (+i <= 1) { return false; }
     const max = Math.floor(Math.sqrt(+i));
     for (let j = 2; j <= max; ++j) {
@@ -24,7 +25,7 @@ describe('Observable.prototype.filter', () => {
     const subs =       '^                !';
     const expected =   '-----1-----3-----|';
 
-    expectObservable(source.filter(oddFilter)).toBe(expected);
+    expectObservable(source.pipe(filter(oddFilter))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -33,7 +34,7 @@ describe('Observable.prototype.filter', () => {
     const subs =              '^                  !';
     const expected =          '--3---5----7-------|';
 
-    expectObservable(source.filter(isPrime)).toBe(expected);
+    expectObservable(source.pipe(filter(isPrime))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -42,7 +43,7 @@ describe('Observable.prototype.filter', () => {
     const expected =          '--3-4-5-6--7-8--9--|';
     const predicate = () => { return true; };
 
-    expectObservable(source.filter(predicate)).toBe(expected);
+    expectObservable(source.pipe(filter(predicate))).toBe(expected);
   });
 
   it('should filter with an always-false predicate', () => {
@@ -50,7 +51,7 @@ describe('Observable.prototype.filter', () => {
     const expected =          '-------------------|';
     const predicate = () => { return false; };
 
-    expectObservable(source.filter(predicate)).toBe(expected);
+    expectObservable(source.pipe(filter(predicate))).toBe(expected);
   });
 
   it('should filter in only prime numbers, source unsubscribes early', () => {
@@ -59,7 +60,7 @@ describe('Observable.prototype.filter', () => {
     const unsub =             '            !       ';
     const expected =          '--3---5----7-       ';
 
-    expectObservable(source.filter(isPrime), unsub).toBe(expected);
+    expectObservable(source.pipe(filter(isPrime)), unsub).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -68,7 +69,7 @@ describe('Observable.prototype.filter', () => {
     const subs =              '^                  !';
     const expected =          '--3---5----7-------#';
 
-    expectObservable(source.filter(isPrime)).toBe(expected);
+    expectObservable(source.pipe(filter(isPrime))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -84,9 +85,9 @@ describe('Observable.prototype.filter', () => {
         throw 'error';
       }
       return isPrime(x);
-    };
+    }
 
-    expectObservable((<any>source).filter(predicate)).toBe(expected);
+    expectObservable((<any>source).pipe(filter(predicate))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -99,7 +100,7 @@ describe('Observable.prototype.filter', () => {
       return isPrime((+x) + i * 10);
     }
 
-    expectObservable((<any>source).filter(predicate)).toBe(expected);
+    expectObservable((<any>source).pipe(filter(predicate))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -113,11 +114,12 @@ describe('Observable.prototype.filter', () => {
       return isPrime(x);
     };
 
-    const r = source
-      .filter(predicate)
-      .do(null, null, () => {
+    const r = source.pipe(
+      filter(predicate),
+      tap(null, null, () => {
         expect(invoked).to.equal(7);
-      });
+      })
+    );
 
     expectObservable(r).toBe(expected);
   });
@@ -132,7 +134,7 @@ describe('Observable.prototype.filter', () => {
     function predicate(x: any, i: number) {
       return isPrime((+x) + i * 10);
     }
-    expectObservable((<any>source).filter(predicate), unsub).toBe(expected);
+    expectObservable((<any>source).pipe(filter(predicate)), unsub).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -144,7 +146,7 @@ describe('Observable.prototype.filter', () => {
     function predicate(x: any, i: number) {
       return isPrime((+x) + i * 10);
     }
-    expectObservable((<any>source).filter(predicate)).toBe(expected);
+    expectObservable((<any>source).pipe(filter(predicate))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -160,9 +162,9 @@ describe('Observable.prototype.filter', () => {
         throw 'error';
       }
       return isPrime((+x) + i * 10);
-    };
+    }
 
-    expectObservable((<any>source).filter(predicate)).toBe(expected);
+    expectObservable((<any>source).pipe(filter(predicate))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -171,9 +173,10 @@ describe('Observable.prototype.filter', () => {
     const expected =          '--------6----------|';
 
     expectObservable(
-      source
-        .filter((x: number) => x % 2 === 0)
-        .filter((x: number) => x % 3 === 0)
+      source.pipe(
+        filter((x: string) => (+x) % 2 === 0),
+        filter((x: string) => (+x) % 3 === 0)
+      )
     ).toBe(expected);
   });
 
@@ -181,18 +184,19 @@ describe('Observable.prototype.filter', () => {
     const source = hot('-1--2--^-3-4-5-6--7-8--9--|');
     const expected =          '--------6----------|';
 
-    function Filterer() {
-      this.filter1 = (x: number) => x % 2 === 0;
-      this.filter2 = (x: number) => x % 3 === 0;
+    class Filterer {
+      filter1 = (x: string) => (+x) % 2 === 0;
+      filter2 = (x: string) => (+x) % 3 === 0;
     }
 
     const filterer = new Filterer();
 
     expectObservable(
-      source
-        .filter(function (x) { return this.filter1(x); }, filterer)
-        .filter(function (x) { return this.filter2(x); }, filterer)
-        .filter(function (x) { return this.filter1(x); }, filterer)
+      source.pipe(
+        filter(function (this: any, x) { return this.filter1(x); }, filterer),
+        filter(function (this: any, x) { return this.filter2(x); }, filterer),
+        filter(function (this: any, x) { return this.filter1(x); }, filterer)
+      )
     ).toBe(expected);
   });
 
@@ -202,9 +206,10 @@ describe('Observable.prototype.filter', () => {
     const values = { a: 16, b: 36, c: 64 };
 
     expectObservable(
-      source
-        .filter((x: number) => x % 2 === 0)
-        .map((x: number) => x * x)
+      source.pipe(
+        filter((x: string) => (+x) % 2 === 0),
+        map((x: string) => (+x) * (+x))
+      )
     ).toBe(expected, values);
   });
 
@@ -213,7 +218,7 @@ describe('Observable.prototype.filter', () => {
     const subs =       '^                !';
     const expected =   '-----1-----3-----#';
 
-    expectObservable(source.filter(oddFilter)).toBe(expected);
+    expectObservable(source.pipe(filter(oddFilter))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -222,7 +227,7 @@ describe('Observable.prototype.filter', () => {
     const subs =        '(^!)';
     const expected =    '|';
 
-    expectObservable(source.filter(oddFilter)).toBe(expected);
+    expectObservable(source.pipe(filter(oddFilter))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -231,7 +236,7 @@ describe('Observable.prototype.filter', () => {
     const subs =        '^';
     const expected =    '-';
 
-    expectObservable(source.filter(oddFilter)).toBe(expected);
+    expectObservable(source.pipe(filter(oddFilter))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -240,15 +245,16 @@ describe('Observable.prototype.filter', () => {
     const subs =        '(^!)';
     const expected =    '#';
 
-    expectObservable(source.filter(oddFilter)).toBe(expected);
+    expectObservable(source.pipe(filter(oddFilter))).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
   it('should send errors down the error path', (done: MochaDone) => {
-    Observable.of(42).filter(<any>((x: number, index: number) => {
-      throw 'bad';
-    }))
-      .subscribe((x: number) => {
+    of(42).pipe(
+      filter(<any>((x: number, index: number) => {
+        throw 'bad';
+      }))
+    ).subscribe((x: number) => {
         done(new Error('should not be called'));
       }, (err: any) => {
         expect(err).to.equal('bad');
@@ -264,12 +270,64 @@ describe('Observable.prototype.filter', () => {
     const unsub =             '            !       ';
     const expected =          '--3---5----7-       ';
 
-    const r = source
-      .mergeMap((x: any) => Observable.of(x))
-      .filter(isPrime)
-      .mergeMap((x: any) => Observable.of(x));
+    const r = source.pipe(
+      mergeMap((x: any) => of(x)),
+      filter(isPrime),
+      mergeMap((x: any) => of(x))
+    );
 
     expectObservable(r, unsub).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
+  });
+
+  it('should support type guards without breaking previous behavior', () => {
+    // tslint:disable no-unused-variable
+
+    // type guards with interfaces and classes
+    {
+      interface Bar { bar?: string; }
+      interface Baz { baz?: number; }
+      class Foo implements Bar, Baz { constructor(public bar: string = 'name', public baz: number = 42) {} }
+
+      const isBar = (x: any): x is Bar => x && (<Bar>x).bar !== undefined;
+      const isBaz = (x: any): x is Baz => x && (<Baz>x).baz !== undefined;
+
+      const foo: Foo = new Foo();
+      of(foo).pipe(filter(foo => foo.baz === 42))
+        .subscribe(x => x.baz); // x is still Foo
+      of(foo).pipe(filter(isBar))
+        .subscribe(x => x.bar); // x is Bar!
+
+      const foobar: Bar = new Foo(); // type is interface, not the class
+      of(foobar).pipe(filter(foobar => foobar.bar === 'name'))
+        .subscribe(x => x.bar); // <-- x is still Bar
+      of(foobar).pipe(filter(isBar))
+        .subscribe(x => x.bar); // <--- x is Bar!
+
+      const barish = { bar: 'quack', baz: 42 }; // type can quack like a Bar
+      of(barish).pipe(filter(x => x.bar === 'quack'))
+        .subscribe(x => x.bar); // x is still { bar: string; baz: number; }
+      of(barish).pipe(filter(isBar))
+        .subscribe(bar => bar.bar); // x is Bar!
+    }
+
+    // type guards with primitive types
+    {
+      const xs: Observable<string | number> = from([ 1, 'aaa', 3, 'bb' ]);
+
+      // This type guard will narrow a `string | number` to a string in the examples below
+      const isString = (x: string | number): x is string => typeof x === 'string';
+
+      xs.pipe(filter(isString))
+        .subscribe(s => s.length); // s is string
+
+      // In contrast, this type of regular boolean predicate still maintains the original type
+      xs.pipe(filter(x => typeof x === 'number'))
+        .subscribe(x => x); // x is still string | number
+      xs.pipe(filter((x, i) => typeof x === 'number' && x > i))
+        .subscribe(x => x); // x is still string | number
+    }
+
+    // tslint:disable enable
   });
 });

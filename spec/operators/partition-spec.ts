@@ -1,12 +1,14 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import * as Rx from 'rxjs/Rx';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+
+declare function asDiagram(arg: string): Function;
 
 const Observable = Rx.Observable;
 
 /** @test {partition} */
 describe('Observable.prototype.partition', () => {
-  function expectObservableArray(result, expected) {
+  function expectObservableArray(result: Rx.Observable<string>[], expected: string[]) {
     for (let idx = 0; idx < result.length; idx++ ) {
       expectObservable(result[idx]).toBe(expected[idx]);
     }
@@ -31,11 +33,39 @@ describe('Observable.prototype.partition', () => {
     const expected = ['--a-----a---------a------|',
                     '----b----------d------c--|'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'a';
     }
 
     expectObservableArray(e1.partition(predicate), expected);
+    expectSubscriptions(e1.subscriptions).toBe([e1subs, e1subs]);
+  });
+
+  it('should partition an observable into two using a predicate that takes an index', () => {
+    const e1 =    hot('--a-b---a------d--e---c--|');
+    const e1subs =    '^                        !';
+    const expected = ['--a-----a---------e------|',
+                      '----b----------d------c--|'];
+
+    function predicate(value: string, index: number) {
+      return index % 2 === 0;
+    }
+
+    expectObservableArray(e1.partition(predicate), expected);
+    expectSubscriptions(e1.subscriptions).toBe([e1subs, e1subs]);
+  });
+
+  it('should partition an observable into two using a predicate and thisArg', () => {
+    const e1 =    hot('--a-b---a------d--a---c--|');
+    const e1subs =    '^                        !';
+    const expected = ['--a-----a---------a------|',
+                    '----b----------d------c--|'];
+
+    function predicate(this: any, x: string) {
+      return x === this.value;
+    }
+
+    expectObservableArray(e1.partition(predicate, {value: 'a'}), expected);
     expectSubscriptions(e1.subscriptions).toBe([e1subs, e1subs]);
   });
 
@@ -45,7 +75,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['--a-----#',
                     '----b---#'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'a';
     }
 
@@ -59,7 +89,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['#',
                     '#'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'a';
     }
 
@@ -75,7 +105,7 @@ describe('Observable.prototype.partition', () => {
 
     let index = 0;
     const error = 'error';
-    function predicate(x) {
+    function predicate(x: string) {
       const match = x === 'a';
       if (match && index++ > 1) {
         throw error;
@@ -93,7 +123,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['----|',
                     '----|'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'x';
     }
 
@@ -107,7 +137,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['|',
                     '|'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'x';
     }
 
@@ -121,7 +151,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['--a--|',
                     '-----|'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'a';
     }
 
@@ -135,7 +165,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['--a--a--a--a--a--a--a--|',
                     '-----------------------|'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'a';
     }
 
@@ -149,7 +179,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['-----------------------|',
                     '--b--b--b--b--b--b--b--|'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'a';
     }
 
@@ -163,7 +193,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['--a-----a-----------',
                     '----b----------d----'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'a';
     }
 
@@ -177,7 +207,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['-',
                     '-'];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'a';
     }
 
@@ -192,7 +222,7 @@ describe('Observable.prototype.partition', () => {
     const expected = ['--a-----          ',
                     '----b---          '];
 
-    function predicate(x) {
+    function predicate(x: string) {
       return x === 'a';
     }
     const result = e1.partition(predicate);
@@ -221,8 +251,13 @@ describe('Observable.prototype.partition', () => {
     expectSubscriptions(e1.subscriptions).toBe([e1subs, e1subs]);
   });
 
-  it('should throw without predicate', () => {
-    const e1 = hot('--a-b---a------d----');
-    expect(e1.partition).to.throw();
+  it('should accept thisArg', () => {
+    const thisArg = {};
+
+    Observable.of(1).partition(function (this: any, value: number) {
+      expect(this).to.deep.equal(thisArg);
+      return true;
+    }, thisArg)
+      .forEach((observable: Rx.Observable<number>) => observable.subscribe());
   });
 });

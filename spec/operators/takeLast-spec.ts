@@ -1,17 +1,18 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+import { takeLast, mergeMap } from 'rxjs/operators';
+import { range, ArgumentOutOfRangeError, of } from 'rxjs';
 
-const Observable = Rx.Observable;
+declare function asDiagram(arg: string): Function;
 
 /** @test {takeLast} */
-describe('Observable.prototype.takeLast', () => {
+describe('takeLast operator', () => {
   asDiagram('takeLast(2)')('should take two values of an observable with many values', () => {
     const e1 =  cold('--a-----b----c---d--|    ');
     const e1subs =   '^                   !    ';
     const expected = '--------------------(cd|)';
 
-    expectObservable(e1.takeLast(2)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(2))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -20,7 +21,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =   '^                   !    ';
     const expected = '--------------------(bcd|)';
 
-    expectObservable(e1.takeLast(3)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(3))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -29,7 +30,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =   '^                   !    ';
     const expected = '--------------------(abcd|)';
 
-    expectObservable(e1.takeLast(5)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(5))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -38,7 +39,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =   '^                   !    ';
     const expected = '--------------------(abcd|)';
 
-    expectObservable(e1.takeLast(4)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(4))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -46,7 +47,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1 =  cold('--a-----b----c---d--|');
     const expected = '|';
 
-    expectObservable(e1.takeLast(0)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(0))).toBe(expected);
   });
 
   it('should work with empty', () => {
@@ -54,7 +55,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =   '(^!)';
     const expected = '|';
 
-    expectObservable(e1.takeLast(42)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(42))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -63,16 +64,16 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =   '^';
     const expected = '-';
 
-    expectObservable(e1.takeLast(42)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(42))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
   it('should be empty on takeLast(0)', () => {
     const e1 = hot('--a--^--b----c---d--|');
-    const e1subs = []; // Don't subscribe at all
+    const e1subs: string[] = []; // Don't subscribe at all
     const expected =    '|';
 
-    expectObservable(e1.takeLast(0)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(0))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -81,7 +82,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =   '^  !   ';
     const expected = '---(a|)';
 
-    expectObservable(e1.takeLast(1)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(1))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -90,7 +91,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =      '^              !   ';
     const expected =    '---------------(d|)';
 
-    expectObservable(e1.takeLast(1)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(1))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -99,7 +100,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =      '^    !';
     const expected =    '-----|';
 
-    expectObservable(e1.takeLast(42)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(42))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -108,7 +109,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =    '^   !';
     const expected =  '----#';
 
-    expectObservable(e1.takeLast(42)).toBe(expected, null, 'too bad');
+    expectObservable(e1.pipe(takeLast(42))).toBe(expected, null, 'too bad');
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -117,7 +118,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =    '^        !';
     const expected =  '---------#';
 
-    expectObservable(e1.takeLast(42)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(42))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -127,7 +128,7 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =    '^        !            ';
     const expected =  '----------            ';
 
-    expectObservable(e1.takeLast(42), unsub).toBe(expected);
+    expectObservable(e1.pipe(takeLast(42)), unsub).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -136,13 +137,13 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =   '(^!)';
     const expected = '#';
 
-    expectObservable(e1.takeLast(42)).toBe(expected);
+    expectObservable(e1.pipe(takeLast(42))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
   it('should throw if total is less than zero', () => {
-    expect(() => { Observable.range(0, 10).takeLast(-1); })
-      .to.throw(Rx.ArgumentOutOfRangeError);
+    expect(() => { range(0, 10).pipe(takeLast(-1)); })
+      .to.throw(ArgumentOutOfRangeError);
   });
 
   it('should not break unsubscription chain when unsubscribed explicitly', () => {
@@ -151,10 +152,11 @@ describe('Observable.prototype.takeLast', () => {
     const e1subs =    '^        !            ';
     const expected =  '----------            ';
 
-    const result = e1
-      .mergeMap((x: string) => Observable.of(x))
-      .takeLast(42)
-      .mergeMap((x: string) => Observable.of(x));
+    const result = e1.pipe(
+      mergeMap((x: string) => of(x)),
+      takeLast(42),
+      mergeMap((x: string) => of(x))
+    );
 
     expectObservable(result, unsub).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);

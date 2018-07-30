@@ -1,12 +1,15 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, asDiagram, time, expectObservable, expectSubscriptions};
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+import { windowCount, mergeMap } from 'rxjs/operators';
+import { TestScheduler } from 'rxjs/testing';
+import { of, Observable } from 'rxjs';
 
-declare const rxTestScheduler: Rx.TestScheduler;
-const Observable = Rx.Observable;
+declare const type: Function;
+declare const asDiagram: Function;
+
+declare const rxTestScheduler: TestScheduler;
 
 /** @test {windowCount} */
-describe('Observable.prototype.windowCount', () => {
+describe('windowCount operator', () => {
   asDiagram('windowCount(3)')('should emit windows with count 3, no skip specified', () => {
     const source =   hot('---a---b---c---d---e---f---g---h---i---|');
     const sourceSubs =   '^                                      !';
@@ -17,7 +20,7 @@ describe('Observable.prototype.windowCount', () => {
     const w = cold(                                         '----|');
     const expectedValues = { x: x, y: y, z: z, w: w };
 
-    const result = source.windowCount(3);
+    const result = source.pipe(windowCount(3));
 
     expectObservable(result).toBe(expected, expectedValues);
     expectSubscriptions(source.subscriptions).toBe(sourceSubs);
@@ -34,7 +37,7 @@ describe('Observable.prototype.windowCount', () => {
     const z = cold(               '---|');
     const values = { u: u, v: v, x: x, y: y, z: z };
 
-    const result = source.windowCount(2, 1);
+    const result = source.pipe(windowCount(2, 1));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(source.subscriptions).toBe(subs);
@@ -50,7 +53,7 @@ describe('Observable.prototype.windowCount', () => {
     const w = cold(                     '---|');
     const values = { x: x, y: y, z: z, w: w };
 
-    const result = source.windowCount(2);
+    const result = source.pipe(windowCount(2));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(source.subscriptions).toBe(subs);
@@ -63,7 +66,7 @@ describe('Observable.prototype.windowCount', () => {
     const w =      cold('|');
     const values = { w: w };
 
-    const result = source.windowCount(2, 1);
+    const result = source.pipe(windowCount(2, 1));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(source.subscriptions).toBe(subs);
@@ -76,7 +79,7 @@ describe('Observable.prototype.windowCount', () => {
     const w =      cold('-');
     const expectedValues = { w: w };
 
-    const result = source.windowCount(2, 1);
+    const result = source.pipe(windowCount(2, 1));
 
     expectObservable(result).toBe(expected, expectedValues);
     expectSubscriptions(source.subscriptions).toBe(subs);
@@ -89,7 +92,7 @@ describe('Observable.prototype.windowCount', () => {
     const w =        cold('#');
     const expectedValues = { w: w };
 
-    const result = source.windowCount(2, 1);
+    const result = source.pipe(windowCount(2, 1));
 
     expectObservable(result).toBe(expected, expectedValues);
     expectSubscriptions(source.subscriptions).toBe(subs);
@@ -108,7 +111,7 @@ describe('Observable.prototype.windowCount', () => {
     const q = cold(                     '---#');
     const values = { u: u, v: v, w: w, x: x, y: y, z: z, q: q };
 
-    const result = source.windowCount(3, 1);
+    const result = source.pipe(windowCount(3, 1));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(source.subscriptions).toBe(subs);
@@ -125,32 +128,10 @@ describe('Observable.prototype.windowCount', () => {
     const unsub =      '         !     ';
     const values = { w: w, x: x, y: y, z: z };
 
-    const result = source.windowCount(2, 1);
+    const result = source.pipe(windowCount(2, 1));
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(source.subscriptions).toBe(subs);
-  });
-
-  it('should dispose window Subjects if the outer is unsubscribed early', () => {
-    const source = hot('--a--b--c--d--e--f--g--h--|');
-    const sourceSubs = '^        !                 ';
-    const expected =   'x---------                 ';
-    const x = cold(    '--a--b--c-                 ');
-    const unsub =      '         !                 ';
-    const late =  time('---------------|           ');
-    const values = { x: x };
-
-    let window;
-    const result = source.windowCount(10, 10)
-      .do((w: any) => { window = w; });
-
-    expectObservable(result, unsub).toBe(expected, values);
-    expectSubscriptions(source.subscriptions).toBe(sourceSubs);
-    rxTestScheduler.schedule(() => {
-      expect(() => {
-        window.subscribe();
-      }).to.throw(Rx.ObjectUnsubscribedError);
-    }, late);
   });
 
   it('should not break unsubscription chains when result is unsubscribed explicitly', () => {
@@ -164,10 +145,11 @@ describe('Observable.prototype.windowCount', () => {
     const unsub =      '         !     ';
     const values = { w: w, x: x, y: y, z: z };
 
-    const result = source
-      .mergeMap((x: string) => Observable.of(x))
-      .windowCount(2, 1)
-      .mergeMap((x: Rx.Observable<string>) => Observable.of(x));
+    const result = source.pipe(
+      mergeMap((x: string) => of(x)),
+      windowCount(2, 1),
+      mergeMap((x: Observable<string>) => of(x))
+    );
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(source.subscriptions).toBe(subs);

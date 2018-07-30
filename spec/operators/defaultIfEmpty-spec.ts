@@ -1,5 +1,7 @@
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import * as Rx from 'rxjs/Rx';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+
+declare function asDiagram(arg: string): Function;
 
 const Observable = Rx.Observable;
 

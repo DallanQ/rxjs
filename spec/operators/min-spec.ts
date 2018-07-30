@@ -1,17 +1,18 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import { min, skip, take, mergeMap } from 'rxjs/operators';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+import { range, of } from 'rxjs';
 
-const Observable = Rx.Observable;
+declare function asDiagram(arg: string): Function;
 
 /** @test {min} */
-describe('Observable.prototype.min', () => {
+describe('min operator', () => {
   asDiagram('min')('should min the values of an observable', () => {
     const source = hot('--a--b--c--|', { a: 42, b: -1, c: 3 });
     const subs =       '^          !';
     const expected =   '-----------(x|)';
 
-    expectObservable((<any>source).min()).toBe(expected, { x: -1 });
+    expectObservable((<any>source).pipe(min())).toBe(expected, { x: -1 });
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -20,7 +21,7 @@ describe('Observable.prototype.min', () => {
     const e1subs =   '^';
     const expected = '-';
 
-    expectObservable((<any>e1).min()).toBe(expected);
+    expectObservable((<any>e1).pipe(min())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -29,7 +30,7 @@ describe('Observable.prototype.min', () => {
     const e1subs =   '(^!)';
     const expected = '|';
 
-    expectObservable((<any>e1).min()).toBe(expected);
+    expectObservable((<any>e1).pipe(min())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -38,7 +39,7 @@ describe('Observable.prototype.min', () => {
     const e1subs =      '^     ';
     const expected =    '------';
 
-    expectObservable((<any>e1).min()).toBe(expected);
+    expectObservable((<any>e1).pipe(min())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -47,7 +48,7 @@ describe('Observable.prototype.min', () => {
     const e1subs =    '^   !';
     const expected =  '----|';
 
-    expectObservable((<any>e1).min()).toBe(expected);
+    expectObservable((<any>e1).pipe(min())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -56,7 +57,7 @@ describe('Observable.prototype.min', () => {
     const e1subs =    '^     !';
     const expected =  '------(w|)';
 
-    expectObservable((<any>e1).min()).toBe(expected, { w: 42 });
+    expectObservable((<any>e1).pipe(min())).toBe(expected, { w: 42 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -65,15 +66,15 @@ describe('Observable.prototype.min', () => {
     const subs =           '^          !';
     const expected =       '-----------(x|)';
 
-    expectObservable((<any>e1).min()).toBe(expected, { x: -1 });
+    expectObservable((<any>e1).pipe(min())).toBe(expected, { x: -1 });
     expectSubscriptions(e1.subscriptions).toBe(subs);
   });
 
   it('should min a range() source observable', (done: MochaDone) => {
-    (<any>Rx.Observable.range(1, 10000)).min().subscribe(
+    (<any>range(1, 10000)).pipe(min()).subscribe(
       (value: number) => {
         expect(value).to.equal(1);
-      }, (x) => {
+      }, (x: any) => {
         done(new Error('should not be called'));
       }, () => {
         done();
@@ -81,10 +82,13 @@ describe('Observable.prototype.min', () => {
   });
 
   it('should min a range().skip(1) source observable', (done: MochaDone) => {
-    (<any>Rx.Observable.range(1, 10)).skip(1).min().subscribe(
+    (<any>range(1, 10)).pipe(
+      skip(1),
+      min()
+    ).subscribe(
       (value: number) => {
         expect(value).to.equal(2);
-      }, (x) => {
+      }, (x: any) => {
         done(new Error('should not be called'));
       }, () => {
         done();
@@ -92,10 +96,13 @@ describe('Observable.prototype.min', () => {
   });
 
   it('should min a range().take(1) source observable', (done: MochaDone) => {
-    (<any>Rx.Observable.range(1, 10)).take(1).min().subscribe(
+    (<any>range(1, 10)).pipe(
+      take(1),
+      min()
+    ).subscribe(
       (value: number) => {
         expect(value).to.equal(1);
-      }, (x) => {
+      }, (x: any) => {
         done(new Error('should not be called'));
       }, () => {
         done();
@@ -107,7 +114,7 @@ describe('Observable.prototype.min', () => {
     const e1subs =    '^        !';
     const expected =  '---------#';
 
-    expectObservable((<any>e1).min()).toBe(expected, null, 'too bad');
+    expectObservable((<any>e1).pipe(min())).toBe(expected, null, 'too bad');
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -116,7 +123,7 @@ describe('Observable.prototype.min', () => {
     const e1subs =   '(^!)';
     const expected = '#';
 
-    expectObservable((<any>e1).min()).toBe(expected);
+    expectObservable((<any>e1).pipe(min())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -125,11 +132,11 @@ describe('Observable.prototype.min', () => {
     const e1subs =    '^   !';
     const expected =  '----|';
 
-    const predicate = function (x, y) {
+    const predicate = function <T>(x: T, y: T) {
       return 42;
     };
 
-    expectObservable((<any>e1).min(predicate)).toBe(expected);
+    expectObservable((<any>e1).pipe(min(predicate))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -138,11 +145,11 @@ describe('Observable.prototype.min', () => {
     const e1subs =    '^    ';
     const expected =  '-----';
 
-    const predicate = function (x, y) {
+    const predicate = function <T>(x: T, y: T) {
       return 42;
     };
 
-    expectObservable((<any>e1).min(predicate)).toBe(expected);
+    expectObservable((<any>e1).pipe(min(predicate))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -155,7 +162,7 @@ describe('Observable.prototype.min', () => {
       return 42;
     };
 
-    expectObservable((<any>e1).min(predicate)).toBe(expected, { w: 1 });
+    expectObservable((<any>e1).pipe(min(predicate))).toBe(expected, { w: 1 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -169,7 +176,7 @@ describe('Observable.prototype.min', () => {
       return 42;
     };
 
-    expectObservable((<any>e1).min(predicate), unsub).toBe(expected, { w: 42 });
+    expectObservable((<any>e1).pipe(min(predicate)), unsub).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -183,51 +190,39 @@ describe('Observable.prototype.min', () => {
       return 42;
     };
 
-    const result = (<any>e1)
-      .mergeMap((x: string) => Observable.of(x))
-      .min(predicate)
-      .mergeMap((x: number) => Observable.of(x));
+    const result = (<any>e1).pipe(
+      mergeMap((x: string) => of(x)),
+      min(predicate),
+      mergeMap((x: number) => of(x))
+    );
 
-    expectObservable(result, unsub).toBe(expected, { w: 42 });
+    expectObservable(result, unsub).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
-  it('should handle a constant predicate on observable with many values', () => {
-    const e1 = hot('-x-^-a-b-c-d-e-f-g-|');
-    const e1subs =    '^               !';
-    const expected =  '----------------(w|)';
-
-    const predicate = () => {
-      return 42;
-    };
-
-    expectObservable((<any>e1).min(predicate)).toBe(expected, { w: 42 });
-    expectSubscriptions(e1.subscriptions).toBe(e1subs);
-  });
-
-  it('should handle a predicate on observable with many values', () => {
+  it('should handle a reverse predicate on observable with many values', () => {
     const e1 = hot('-a-^-b--c--d-|', { a: 42, b: -1, c: 0, d: 666 });
     const e1subs =    '^         !';
     const expected =  '----------(w|)';
 
-    const predicate = function (x, y) {
-      return Math.max(x, y);
+    const predicate = function <T>(x: T, y: T) {
+      return x > y ? -1 : 1;
     };
 
-    expectObservable((<any>e1).min(predicate)).toBe(expected, { w: 666 });
+    expectObservable((<any>e1).pipe(min(predicate))).toBe(expected, { w: 666 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
   it('should handle a predicate for string on observable with many values', () => {
-    const e1 = hot('-1-^-2--3--4-|');
+    const e1 = hot('-a-^-b--c--d-|');
     const e1subs =    '^         !';
     const expected =  '----------(w|)';
 
-    const predicate = function (x, y) {
-      return x < y ? x : y;
+    const predicate = function <T>(x: T, y: T) {
+      return x > y ? -1 : 1;
     };
 
-    expectObservable((<any>e1).min(predicate)).toBe(expected, { w: '2' });
+    expectObservable((<any>e1).pipe(min(predicate))).toBe(expected, { w: 'd' });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -240,7 +235,7 @@ describe('Observable.prototype.min', () => {
       return 42;
     };
 
-    expectObservable((<any>e1).min(predicate)).toBe(expected);
+    expectObservable((<any>e1).pipe(min(predicate))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -249,14 +244,14 @@ describe('Observable.prototype.min', () => {
     const e1subs =    '^    !   ';
     const expected =  '-----#   ';
 
-    const predicate = function (x, y) {
+    const predicate = function (x: string, y: string) {
       if (y === '3') {
         throw 'error';
       }
-      return x > y ? x : y;
+      return x > y ? -1 : 1;
     };
 
-    expectObservable((<any>e1).min(predicate)).toBe(expected);
+    expectObservable((<any>e1).pipe(min(predicate))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 });

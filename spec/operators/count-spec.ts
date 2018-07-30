@@ -1,17 +1,18 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import { of, range } from 'rxjs';
+import { count, skip, take, mergeMap } from 'rxjs/operators';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
 
-const Observable = Rx.Observable;
+declare function asDiagram(arg: string): Function;
 
 /** @test {count} */
-describe('Observable.prototype.count', () => {
+describe('count operator', () => {
   asDiagram('count')('should count the values of an observable', () => {
     const source = hot('--a--b--c--|');
     const subs =       '^          !';
     const expected =   '-----------(x|)';
 
-    expectObservable(source.count()).toBe(expected, {x: 3});
+    expectObservable(source.pipe(count())).toBe(expected, {x: 3});
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -20,7 +21,7 @@ describe('Observable.prototype.count', () => {
     const e1subs =   '^';
     const expected = '-';
 
-    expectObservable(e1.count()).toBe(expected);
+    expectObservable(e1.pipe(count())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -29,7 +30,7 @@ describe('Observable.prototype.count', () => {
     const e1subs =   '(^!)';
     const expected = '(w|)';
 
-    expectObservable(e1.count()).toBe(expected, { w: 0 });
+    expectObservable(e1.pipe(count())).toBe(expected, { w: 0 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -38,7 +39,7 @@ describe('Observable.prototype.count', () => {
     const e1subs =      '^     ';
     const expected =    '------';
 
-    expectObservable(e1.count()).toBe(expected);
+    expectObservable(e1.pipe(count())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -47,7 +48,7 @@ describe('Observable.prototype.count', () => {
     const e1subs =    '^   !';
     const expected =  '----(w|)';
 
-    expectObservable(e1.count()).toBe(expected, { w: 0 });
+    expectObservable(e1.pipe(count())).toBe(expected, { w: 0 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -56,7 +57,7 @@ describe('Observable.prototype.count', () => {
     const e1subs =    '^     !';
     const expected =  '------(w|)';
 
-    expectObservable(e1.count()).toBe(expected, { w: 1 });
+    expectObservable(e1.pipe(count())).toBe(expected, { w: 1 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -65,12 +66,12 @@ describe('Observable.prototype.count', () => {
     const subs =           '^          !';
     const expected =       '-----------(x|)';
 
-    expectObservable(source.count()).toBe(expected, {x: 3});
+    expectObservable(source.pipe(count())).toBe(expected, {x: 3});
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
   it('should count a range() source observable', (done: MochaDone) => {
-    Rx.Observable.range(1, 10).count().subscribe(
+    range(1, 10).pipe(count()).subscribe(
       (value: number) => {
         expect(value).to.equal(10);
       }, (x) => {
@@ -81,7 +82,10 @@ describe('Observable.prototype.count', () => {
   });
 
   it('should count a range().skip(1) source observable', (done: MochaDone) => {
-    Rx.Observable.range(1, 10).skip(1).count().subscribe(
+    range(1, 10).pipe(
+      skip(1),
+      count()
+    ).subscribe(
       (value: number) => {
         expect(value).to.equal(9);
       }, (x) => {
@@ -92,7 +96,10 @@ describe('Observable.prototype.count', () => {
   });
 
   it('should count a range().take(1) source observable', (done: MochaDone) => {
-    Rx.Observable.range(1, 10).take(1).count().subscribe(
+    range(1, 10).pipe(
+      take(1),
+      count()
+    ).subscribe(
       (value: number) => {
         expect(value).to.equal(1);
       }, (x) => {
@@ -107,7 +114,7 @@ describe('Observable.prototype.count', () => {
     const e1subs =    '^        !';
     const expected =  '---------#';
 
-    expectObservable(e1.count()).toBe(expected, null, 'too bad');
+    expectObservable(e1.pipe(count())).toBe(expected, null, 'too bad');
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -116,7 +123,7 @@ describe('Observable.prototype.count', () => {
     const e1subs =   '(^!)';
     const expected = '#';
 
-    expectObservable(e1.count()).toBe(expected);
+    expectObservable(e1.pipe(count())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -128,7 +135,7 @@ describe('Observable.prototype.count', () => {
       return true;
     };
 
-    expectObservable(e1.count(predicate)).toBe(expected, { w: 0 });
+    expectObservable(e1.pipe(count(predicate))).toBe(expected, { w: 0 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -140,7 +147,7 @@ describe('Observable.prototype.count', () => {
       return false;
     };
 
-    expectObservable(e1.count(predicate)).toBe(expected, { w: 0 });
+    expectObservable(e1.pipe(count(predicate))).toBe(expected, { w: 0 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -152,7 +159,7 @@ describe('Observable.prototype.count', () => {
       return true;
     };
 
-    expectObservable(e1.count(predicate)).toBe(expected, { w: 1 });
+    expectObservable(e1.pipe(count(predicate))).toBe(expected, { w: 1 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -164,7 +171,7 @@ describe('Observable.prototype.count', () => {
       return false;
     };
 
-    expectObservable(e1.count(predicate)).toBe(expected, { w: 0 });
+    expectObservable(e1.pipe(count(predicate))).toBe(expected, { w: 0 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -174,7 +181,7 @@ describe('Observable.prototype.count', () => {
     const expected =  '-------    ';
     const unsub =     '      !    ';
 
-    const result = e1.count((value: string) => parseInt(value) < 10);
+    const result = e1.pipe(count((value: string) => parseInt(value) < 10));
 
     expectObservable(result, unsub).toBe(expected, { w: 3 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -186,10 +193,11 @@ describe('Observable.prototype.count', () => {
     const expected =  '-------    ';
     const unsub =     '      !    ';
 
-    const result = e1
-      .mergeMap((x: string) => Observable.of(x))
-      .count((value: string) => parseInt(value) < 10)
-      .mergeMap((x: number) => Observable.of(x));
+    const result = e1.pipe(
+      mergeMap((x: string) => of(x)),
+      count((value: string) => parseInt(value) < 10),
+      mergeMap((x: number) => of(x))
+    );
 
     expectObservable(result, unsub).toBe(expected, { w: 3 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -201,7 +209,7 @@ describe('Observable.prototype.count', () => {
     const expected =  '----------(w|)';
     const predicate = (value: string) => parseInt(value) < 10;
 
-    expectObservable(e1.count(predicate)).toBe(expected, { w: 3 });
+    expectObservable(e1.pipe(count(predicate))).toBe(expected, { w: 3 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -211,7 +219,7 @@ describe('Observable.prototype.count', () => {
     const expected =  '----------(w|)';
     const predicate = (value: string) => parseInt(value) > 10;
 
-    expectObservable(e1.count(predicate)).toBe(expected, { w: 0 });
+    expectObservable(e1.pipe(count(predicate))).toBe(expected, { w: 0 });
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -221,7 +229,7 @@ describe('Observable.prototype.count', () => {
     const expected =  '----#';
     const predicate = () => true;
 
-    expectObservable(e1.count(predicate)).toBe(expected);
+    expectObservable(e1.pipe(count(predicate))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -231,7 +239,7 @@ describe('Observable.prototype.count', () => {
     const expected =  '----#';
     const predicate = () => false;
 
-    expectObservable(e1.count(predicate)).toBe(expected);
+    expectObservable(e1.pipe(count(predicate))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -241,7 +249,7 @@ describe('Observable.prototype.count', () => {
     const expected =  '-----';
     const predicate = () => true;
 
-    expectObservable(e1.count(predicate)).toBe(expected);
+    expectObservable(e1.pipe(count(predicate))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -256,7 +264,7 @@ describe('Observable.prototype.count', () => {
       return true;
     };
 
-    expectObservable(e1.count(predicate)).toBe(expected);
+    expectObservable(e1.pipe(count(predicate))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 });

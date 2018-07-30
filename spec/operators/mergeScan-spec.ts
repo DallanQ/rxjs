@@ -1,11 +1,11 @@
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, expectObservable, expectSubscriptions};
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+import { TestScheduler } from 'rxjs/testing';
+import { of, EMPTY, NEVER, concat, throwError } from 'rxjs';
+import { mergeScan, delay, mergeMap } from 'rxjs/operators';
 
-declare const rxTestScheduler: Rx.TestScheduler;
-const Observable = Rx.Observable;
-
+declare const rxTestScheduler: TestScheduler;
 /** @test {mergeScan} */
-describe('Observable.prototype.mergeScan', () => {
+describe('mergeScan', () => {
   it('should mergeScan things', () => {
     const e1 = hot('--a--^--b--c--d--e--f--g--|');
     const e1subs =      '^                    !';
@@ -20,7 +20,7 @@ describe('Observable.prototype.mergeScan', () => {
       z: ['b', 'c', 'd', 'e', 'f', 'g']
     };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.of(acc.concat(x)), []);
+    const source = e1.pipe(mergeScan((acc, x) => of(acc.concat(x)), []));
 
     expectObservable(source).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -37,7 +37,7 @@ describe('Observable.prototype.mergeScan', () => {
       w: ['b', 'c', 'd']
     };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.of(acc.concat(x)), []);
+    const source = e1.pipe(mergeScan((acc, x) => of(acc.concat(x)), []));
 
     expectObservable(source).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -57,8 +57,8 @@ describe('Observable.prototype.mergeScan', () => {
       z: ['b', 'c', 'd', 'e', 'f', 'g']
     };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) =>
-      Observable.of(acc.concat(x)).delay(20, rxTestScheduler), []);
+    const source = e1.pipe(mergeScan((acc, x) =>
+      of(acc.concat(x)).delay(20, rxTestScheduler), []));
 
     expectObservable(source).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -66,7 +66,7 @@ describe('Observable.prototype.mergeScan', () => {
 
   it('should not stop ongoing async projections when source completes', () => {
     const e1 = hot('--a--^--b--c--d--e--f--g--|');
-    const e1subs =      '^                      !';
+    const e1subs =      '^                    !';
     const expected =    '--------u--v--w--x--y--(z|)';
 
     const values = {
@@ -78,8 +78,8 @@ describe('Observable.prototype.mergeScan', () => {
       z: ['c', 'e', 'g'],
     };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) =>
-      Observable.of(acc.concat(x)).delay(50, rxTestScheduler), []);
+    const source = e1.pipe(mergeScan((acc, x) =>
+      of(acc.concat(x)).delay(50, rxTestScheduler), []));
 
     expectObservable(source).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -99,8 +99,8 @@ describe('Observable.prototype.mergeScan', () => {
       z: ['c', 'e', 'g'],
     };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) =>
-      Observable.of(acc.concat(x)).delay(50, rxTestScheduler), []);
+    const source = e1.pipe(mergeScan((acc, x) =>
+      of(acc.concat(x)).delay(50, rxTestScheduler), []));
 
     expectObservable(source, e1subs).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -121,11 +121,16 @@ describe('Observable.prototype.mergeScan', () => {
       z: ['c', 'e', 'g'],
     };
 
-    const source = (<any>e1)
-      .mergeMap((x: string) => Observable.of(x))
-      .mergeScan((acc: any, x: string) =>
-        Observable.of(acc.concat(x)).delay(50, rxTestScheduler), [])
-      .mergeMap(function (x) { return Observable.of(x); });
+    const source = e1
+      .pipe(
+        mergeMap((x) => of(x)),
+        mergeScan((acc, x) =>
+          of([...acc, x]).pipe(
+            delay(50, rxTestScheduler)
+          )
+        , []),
+        mergeMap(function (x) { return of(x); })
+      );
 
     expectObservable(source, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -141,14 +146,14 @@ describe('Observable.prototype.mergeScan', () => {
       v: ['b', 'c']
     };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => {
+    const source = e1.pipe(mergeScan((acc, x) => {
       if (x === 'd') {
-        throw 'bad!';
+        throw new Error('bad!');
       }
-      return Observable.of(acc.concat(x));
-    }, []);
+      return of(acc.concat(x));
+    }, []));
 
-    expectObservable(source).toBe(expected, values, 'bad!');
+    expectObservable(source).toBe(expected, values, new Error('bad!'));
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -157,9 +162,9 @@ describe('Observable.prototype.mergeScan', () => {
     const e1subs =      '^  !';
     const expected =    '---#';
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.throw('bad!'), []);
+    const source = e1.pipe(mergeScan((acc, x) => throwError(new Error('bad!')), []));
 
-    expectObservable(source).toBe(expected, undefined, 'bad!');
+    expectObservable(source).toBe(expected, undefined, new Error('bad!'));
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -168,9 +173,9 @@ describe('Observable.prototype.mergeScan', () => {
     const e1subs =      '^                    !';
     const expected =    '---------------------(x|)';
 
-    const values = { x: [] };
+    const values = { x: <string[]>[] };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.empty(), []);
+    const source = e1.pipe(mergeScan((acc, x) => EMPTY, []));
 
     expectObservable(source).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -178,12 +183,12 @@ describe('Observable.prototype.mergeScan', () => {
 
   it('should handle a never projected Observable', () => {
     const e1 = hot('--a--^--b--c--d--e--f--g--|');
-    const e1subs =      '^                     ';
+    const e1subs =      '^                    !';
     const expected =    '----------------------';
 
-    const values = { x: [] };
+    const values = { x: <string[]>[] };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.never(), []);
+    const source = e1.pipe(mergeScan((acc, x) => NEVER, []));
 
     expectObservable(source).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -195,10 +200,10 @@ describe('Observable.prototype.mergeScan', () => {
     const expected = '(u|)';
 
     const values = {
-      u: []
+      u: <string[]>[]
     };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.of(acc.concat(x)), []);
+    const source = e1.pipe(mergeScan((acc, x) => of(acc.concat(x)), []));
 
     expectObservable(source).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -209,7 +214,7 @@ describe('Observable.prototype.mergeScan', () => {
     const e1subs =   '^';
     const expected = '-';
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.of(acc.concat(x)), []);
+    const source = e1.pipe(mergeScan((acc, x) => of(acc.concat(x)), []));
 
     expectObservable(source).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -220,7 +225,7 @@ describe('Observable.prototype.mergeScan', () => {
     const e1subs =   '(^!)';
     const expected = '#';
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.of(acc.concat(x)), []);
+    const source = e1.pipe(mergeScan((acc, x) => of(acc.concat(x)), []));
 
     expectObservable(source).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -239,7 +244,7 @@ describe('Observable.prototype.mergeScan', () => {
       z: ['b', 'c', 'd', 'e', 'f', 'g']
     };
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.of(acc.concat(x)), []);
+    const source = e1.pipe(mergeScan((acc, x) => of(acc.concat(x)), []));
 
     expectObservable(source, sub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(sub);
@@ -247,7 +252,7 @@ describe('Observable.prototype.mergeScan', () => {
 
   it('should mergescan projects cold Observable with single concurrency', () => {
     const e1 =   hot('--a--b--c--|');
-    const e1subs =   '^                                  !';
+    const e1subs =   '^          !';
 
     const inner = [
       cold(          '--d--e--f--|                      '),
@@ -262,10 +267,10 @@ describe('Observable.prototype.mergeScan', () => {
     const expected = '--x-d--e--f--f-g--h--i--i-j--k--l--|';
 
     let index = 0;
-    const source = (<any>e1).mergeScan((acc: any, x: string) => {
+    const source = e1.pipe(mergeScan((acc, x) => {
       const value = inner[index++];
       return value.startWith(acc);
-    }, 'x', 1);
+    }, 'x', 1));
 
     expectObservable(source).toBe(expected);
 
@@ -280,7 +285,7 @@ describe('Observable.prototype.mergeScan', () => {
     const e1subs =      '^                    !';
     const expected =    '---------------------(x|)';
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) => Observable.empty(), ['1']);
+    const source = e1.pipe(mergeScan((acc, x) => EMPTY, ['1']));
 
     expectObservable(source).toBe(expected, {x: ['1']});
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -288,11 +293,12 @@ describe('Observable.prototype.mergeScan', () => {
 
   it('should emit accumulator if inner completes without value after source completes', () => {
     const e1 = hot('--a--^--b--c--d--e--f--g--|');
-    const e1subs =      '^                      !';
+    const e1subs =      '^                    !';
     const expected =    '-----------------------(x|)';
 
-    const source = (<any>e1).mergeScan((acc: any, x: string) =>
-      Observable.empty().delay(50, rxTestScheduler), ['1']);
+    const source = e1.pipe(
+      mergeScan((acc, x) => EMPTY.delay(50, rxTestScheduler), ['1'])
+    );
 
     expectObservable(source).toBe(expected, {x: ['1']});
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -300,7 +306,7 @@ describe('Observable.prototype.mergeScan', () => {
 
   it('should mergescan projects hot Observable with single concurrency', () => {
     const e1 =   hot('---a---b---c---|');
-    const e1subs =   '^                           !';
+    const e1subs =   '^              !';
 
     const inner = [
       hot(         '--d--e--f--|'),
@@ -315,10 +321,10 @@ describe('Observable.prototype.mergeScan', () => {
     const expected = '---x-e--f--f--i----i-l------|';
 
     let index = 0;
-    const source = (<any>e1).mergeScan((acc: any, x: string) => {
+    const source = e1.pipe(mergeScan((acc, x) => {
       const value = inner[index++];
       return value.startWith(acc);
-    }, 'x', 1);
+    }, 'x', 1));
 
     expectObservable(source).toBe(expected);
 
@@ -330,7 +336,7 @@ describe('Observable.prototype.mergeScan', () => {
 
   it('should mergescan projects cold Observable with dual concurrency', () => {
     const e1 =   hot('----a----b----c----|');
-    const e1subs =   '^                                 !';
+    const e1subs =   '^                  !';
 
     const inner = [
       cold(            '---d---e---f---|               '),
@@ -345,10 +351,10 @@ describe('Observable.prototype.mergeScan', () => {
     const expected = '----x--d-d-eg--fh--hi-j---k---l---|';
 
     let index = 0;
-    const source = (<any>e1).mergeScan((acc: any, x: string) => {
+    const source = e1.pipe(mergeScan((acc, x) => {
       const value = inner[index++];
       return value.startWith(acc);
-    }, 'x', 2);
+    }, 'x', 2));
 
     expectObservable(source).toBe(expected);
 
@@ -360,7 +366,7 @@ describe('Observable.prototype.mergeScan', () => {
 
   it('should mergescan projects hot Observable with dual concurrency', () => {
     const e1 =   hot('---a---b---c---|');
-    const e1subs =   '^                           !';
+    const e1subs =   '^              !';
 
     const inner = [
       hot(         '--d--e--f--|'),
@@ -375,10 +381,10 @@ describe('Observable.prototype.mergeScan', () => {
     const expected = '---x-e-efh-h-ki------l------|';
 
     let index = 0;
-    const source = (<any>e1).mergeScan((acc: any, x: string) => {
+    const source = e1.pipe(mergeScan((acc, x) => {
       const value = inner[index++];
       return value.startWith(acc);
-    }, 'x', 2);
+    }, 'x', 2));
 
     expectObservable(source).toBe(expected);
 

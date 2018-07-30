@@ -1,12 +1,15 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, asDiagram, time, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import { hot, cold, expectObservable, expectSubscriptions, time } from '../helpers/marble-testing';
+import { Observable, NEVER, of, ObjectUnsubscribedError } from 'rxjs';
+import { windowToggle, tap } from 'rxjs/operators';
+import { TestScheduler } from 'rxjs/testing';
 
-declare const rxTestScheduler: Rx.TestScheduler;
-const Observable = Rx.Observable;
+declare const rxTestScheduler: TestScheduler;
+declare const type: Function;
+declare const asDiagram: Function;
 
 /** @test {windowToggle} */
-describe('Observable.prototype.windowToggle', () => {
+describe('windowToggle', () => {
   asDiagram('windowToggle')('should emit windows governed by openings and closings', () => {
     const source = hot('--1--2--^-a--b--c--d--e--f--g--h-|');
     const subs =               '^                        !';
@@ -22,9 +25,9 @@ describe('Observable.prototype.windowToggle', () => {
     const x = cold(                '-b--c|                ');
     const y = cold(                         '-e--f|       ');
     const z = cold(                                  '-h-|');
-    const values = { x: x, y: y, z: z };
+    const values = { x, y, z };
 
-    const result = source.windowToggle(e2, () => e3);
+    const result = source.pipe(windowToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(source.subscriptions).toBe(subs);
@@ -49,12 +52,12 @@ describe('Observable.prototype.windowToggle', () => {
     const x = cold(                '-c--d--e--(f|)      ');
     const y = cold(                        '--f--g--h-| ');
     const z = cold(                                '---|');
-    const values = { x: x, y: y, z: z };
+    const values = { x, y, z };
 
-    const source = e1.windowToggle(e2, (value: string) => {
+    const source = e1.pipe(windowToggle(e2, (value: string) => {
       expect(value).to.equal('x');
       return e3;
-    });
+    }));
 
     expectObservable(source).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -78,10 +81,10 @@ describe('Observable.prototype.windowToggle', () => {
     const x = cold(       '--b---c---d---e|                        ');
     const y = cold(                   '--e-|                       ');
     const z = cold(                            '-g---h------|      ');
-    const values = { x: x, y: y, z: z };
+    const values = { x, y, z };
 
     let i = 0;
-    const result = e1.windowToggle(e2, () => close[i++]);
+    const result = e1.pipe(windowToggle(e2, () => close[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -107,10 +110,10 @@ describe('Observable.prototype.windowToggle', () => {
     const x = cold(       '--b---c---d---e|                     ');
     const y = cold(                   '--e-|                    ');
     const z = cold(                            '-g---h------|   ');
-    const values = { x: x, y: y, z: z };
+    const values = { x, y, z };
 
     let i = 0;
-    const result = e1.windowToggle(e2, () => closings[i++].obs);
+    const result = e1.pipe(windowToggle(e2, () => closings[i++].obs));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -132,10 +135,10 @@ describe('Observable.prototype.windowToggle', () => {
     const x = cold(       '--b---c---d---e|                     ');
     const y = cold(                   '--e-|                    ');
     const z = cold(                            '-g---h------|   ');
-    const values = { x: x, y: y, z: z };
+    const values = { x, y, z };
 
     let i = 0;
-    const result = e1.windowToggle(e2, () => close[i++]);
+    const result = e1.pipe(windowToggle(e2, () => close[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -156,10 +159,10 @@ describe('Observable.prototype.windowToggle', () => {
     const x = cold(       '--b---c---d--|                          ');
     const y = cold(                   '--e-                        ');
     const unsub =       '                 !                        ';
-    const values = { x: x, y: y };
+    const values = { x, y };
 
     let i = 0;
-    const result = e1.windowToggle(e2, () => close[i++]);
+    const result = e1.pipe(windowToggle(e2, () => close[i++]));
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -183,13 +186,13 @@ describe('Observable.prototype.windowToggle', () => {
     const x = cold(       '--b---c---d---                          ');
     const y = cold(                   '--                          ');
     const unsub =       '               !                          ';
-    const values = { x: x, y: y };
+    const values = { x, y };
 
     let i = 0;
     const result = e1
-      .mergeMap((x: string) => Observable.of(x))
-      .windowToggle(e2, () => close[i++])
-      .mergeMap((x: Rx.Observable<string>) => Observable.of(x));
+      .mergeMap((x: string) => of(x))
+      .pipe(windowToggle(e2, () => close[i++]))
+      .mergeMap(x => of(x));
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -206,19 +209,20 @@ describe('Observable.prototype.windowToggle', () => {
     const x = cold(    '--a--b--c-                 ');
     const unsub =      '         !                 ';
     const late =  time('---------------|           ');
-    const values = { x: x };
+    const values = { x };
 
-    let window;
-    const result = source
-      .windowToggle(open, () => Observable.never())
-      .do((w: any) => { window = w; });
+    let window: Observable<string>;
+    const result = source.pipe(
+      windowToggle(open, () => NEVER),
+      tap(w => { window = w; }),
+    );
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(source.subscriptions).toBe(sourceSubs);
     rxTestScheduler.schedule(() => {
       expect(() => {
         window.subscribe();
-      }).to.throw(Rx.ObjectUnsubscribedError);
+      }).to.throw(ObjectUnsubscribedError);
     }, late);
   });
 
@@ -235,12 +239,12 @@ describe('Observable.prototype.windowToggle', () => {
     const values = { x: x };
 
     let i = 0;
-    const result = e1.windowToggle(e2, () => {
+    const result = e1.pipe(windowToggle(e2, () => {
       if (i === 1) {
         throw 'error';
       }
       return close[i++];
-    });
+    }));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -257,10 +261,10 @@ describe('Observable.prototype.windowToggle', () => {
     const expected =    '--x-----------(y#)                  ';
     const x = cold(       '--b---c---d-#                     ');
     const y = cold(                   '#                     ');
-    const values = { x: x, y: y };
+    const values = { x, y };
 
     let i = 0;
-    const result = e1.windowToggle(e2, () => close[i++]);
+    const result = e1.pipe(windowToggle(e2, () => close[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -277,10 +281,10 @@ describe('Observable.prototype.windowToggle', () => {
     const expected =    '--x-----------y----#                ';
     const x = cold(       '--b---c---d---e|                  ');
     const y = cold(                   '--e--#                ');
-    const values = { x: x, y: y };
+    const values = { x, y };
 
     let i = 0;
-    const result = e1.windowToggle(e2, () => close[i++]);
+    const result = e1.pipe(windowToggle(e2, () => close[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -297,10 +301,10 @@ describe('Observable.prototype.windowToggle', () => {
     const expected =    '--x-----------y----#                ';
     const x = cold(       '--b---c---d---e|                  ');
     const y = cold(                   '--e--#                ');
-    const values = { x: x, y: y };
+    const values = { x, y };
 
     let i = 0;
-    const result = e1.windowToggle(e2, () => close[i++]);
+    const result = e1.pipe(windowToggle(e2, () => close[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -315,7 +319,7 @@ describe('Observable.prototype.windowToggle', () => {
     const e3 = cold(   '-----c--|');
     const expected = '|';
 
-    const result = e1.windowToggle(e2, () => e3);
+    const result = e1.pipe(windowToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -330,7 +334,7 @@ describe('Observable.prototype.windowToggle', () => {
     const e3 = cold('-----c--|');
     const expected = '#';
 
-    const result = e1.windowToggle(e2, () => e3);
+    const result = e1.pipe(windowToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -350,9 +354,9 @@ describe('Observable.prototype.windowToggle', () => {
     const y = cold(                       '--|                     ');
     const z = cold(                           '--|                 ');
     const unsub =    '                                            !';
-    const values = { u: u, v: v, x: x, y: y, z: z };
+    const values = { u: u, v: v, x, y, z };
 
-    const result = e1.windowToggle(e2, () => e3);
+    const result = e1.pipe(windowToggle(e2, () => e3));
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -367,7 +371,7 @@ describe('Observable.prototype.windowToggle', () => {
     const e3 =  cold(   '--c-|                               ');
     const expected =    '-----------------------------------|';
 
-    const result = e1.windowToggle(e2, () => e3);
+    const result = e1.pipe(windowToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -383,9 +387,9 @@ describe('Observable.prototype.windowToggle', () => {
     const expected =    '---x---------------y---------------|';
     const x = cold(        '-b---c---d---e---f---g---h------|');
     const y = cold(                        '-f---g---h------|');
-    const values = { x: x, y: y };
+    const values = { x, y };
 
-    const result = e1.windowToggle(e2, () => e3);
+    const result = e1.pipe(windowToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -401,7 +405,7 @@ describe('Observable.prototype.windowToggle', () => {
     const subs =        '(^!)';
     const expected =    '#';
 
-    const result = e1.windowToggle(e2, () => e3);
+    const result = e1.pipe(windowToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -418,9 +422,9 @@ describe('Observable.prototype.windowToggle', () => {
     const expected =    '---x---------------y---------------|';
     const x = cold(        '|');
     const y = cold(                        '|');
-    const values = { x: x, y: y };
+    const values = { x, y };
 
-    const result = e1.windowToggle(e2, () => e3);
+    const result = e1.pipe(windowToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);

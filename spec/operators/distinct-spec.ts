@@ -1,16 +1,15 @@
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, expectObservable, expectSubscriptions};
-
-const Observable = Rx.Observable;
+import { distinct, mergeMap } from 'rxjs/operators';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+import { of } from 'rxjs';
 
 /** @test {distinct} */
-describe('Observable.prototype.distinct', () => {
+describe('distinct operator', () => {
   it('should distinguish between values', () => {
     const e1 =   hot('--a--a--a--b--b--a--|');
     const e1subs =   '^                   !';
     const expected = '--a--------b--------|';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -19,7 +18,7 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '^                  ';
     const expected = '--a--------b-------';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -28,7 +27,7 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '^';
     const expected = '-';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -37,7 +36,7 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '^';
     const expected = '-';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -46,7 +45,7 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '(^!)';
     const expected = '|';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -55,7 +54,7 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '^     !';
     const expected = '------|';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -64,15 +63,15 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '^    !';
     const expected = '--a--|';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
   it('should emit if source is scalar', () => {
-    const e1 = Observable.of('a');
+    const e1 = of('a');
     const expected = '(a|)';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
   });
 
   it('should raises error if source raises error', () => {
@@ -80,7 +79,7 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '^       !';
     const expected = '--a-----#';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -89,7 +88,7 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '(^!)';
     const expected = '#';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -98,7 +97,7 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '^                   !';
     const expected = '--a--b--c--d--e--f--|';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -108,7 +107,7 @@ describe('Observable.prototype.distinct', () => {
     const expected = '--a--b-----          ';
     const unsub =    '          !          ';
 
-    const result = (<any>e1).distinct();
+    const result = (<any>e1).pipe(distinct());
 
     expectObservable(result, unsub).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -120,10 +119,11 @@ describe('Observable.prototype.distinct', () => {
     const expected = '--a--b-----          ';
     const unsub =    '          !          ';
 
-    const result = (<any>e1
-      .mergeMap((x: any) => Observable.of(x)))
-      .distinct()
-      .mergeMap((x: any) => Observable.of(x));
+    const result = (<any>e1).pipe(
+      mergeMap((x: any) => of(x)),
+      distinct(),
+      mergeMap((x: any) => of(x)),
+    );
 
     expectObservable(result, unsub).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -134,50 +134,33 @@ describe('Observable.prototype.distinct', () => {
     const e1subs =   '^                   !';
     const expected = '--a-----------------|';
 
-    expectObservable((<any>e1).distinct()).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
-  it('should emit once if comparer returns true always regardless of source emits', () => {
-    const e1 =   hot('--a--b--c--d--e--f--|');
+  it('should distinguish values by key', () => {
+    const values = {a: 1, b: 2, c: 3, d: 4, e: 5, f: 6};
+    const e1 =   hot('--a--b--c--d--e--f--|', values);
     const e1subs =   '^                   !';
-    const expected = '--a-----------------|';
+    const expected = '--a--b--c-----------|';
+    const selector = (value: number) => value % 3;
 
-    expectObservable((<any>e1).distinct(() => true)).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct(selector))).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
-  it('should emit all if comparer returns false always regardless of source emits', () => {
-    const e1 =   hot('--a--a--a--a--a--a--|');
-    const e1subs =   '^                   !';
-    const expected = '--a--a--a--a--a--a--|';
-
-    expectObservable((<any>e1).distinct(() => false)).toBe(expected);
-    expectSubscriptions(e1.subscriptions).toBe(e1subs);
-  });
-
-  it('should distinguish values by selector', () => {
-    const e1 =   hot('--a--b--c--d--e--f--|', {a: 1, b: 2, c: 3, d: 4, e: 5, f: 6});
-    const e1subs =   '^                   !';
-    const expected = '--a-----c-----e-----|';
-    const selector = (x: number, y: number) => y % 2 === 0;
-
-    expectObservable((<any>e1).distinct(selector)).toBe(expected, {a: 1, c: 3, e: 5});
-    expectSubscriptions(e1.subscriptions).toBe(e1subs);
-  });
-
-  it('should raises error when comparer throws', () => {
+  it('should raises error when selector throws', () => {
     const e1 =   hot('--a--b--c--d--e--f--|');
     const e1subs =   '^          !         ';
     const expected = '--a--b--c--#         ';
-    const selector = (x: string, y: string) => {
-      if (y === 'd') {
-        throw 'error';
+    const selector = (value: string) => {
+      if (value === 'd') {
+        throw new Error('d is for dumb');
       }
-      return x === y;
+      return value;
     };
 
-    expectObservable((<any>e1).distinct(selector)).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct(selector))).toBe(expected, undefined, new Error('d is for dumb'));
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -187,9 +170,8 @@ describe('Observable.prototype.distinct', () => {
     const e2 =   hot('-----------x--------|');
     const e2subs =   '^                   !';
     const expected = '--a--b--------a--b--|';
-    const selector = (x: string, y: string) => x === y;
 
-    expectObservable((<any>e1).distinct(selector, e2)).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct(null, e2))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
     expectSubscriptions(e2.subscriptions).toBe(e2subs);
   });
@@ -200,9 +182,8 @@ describe('Observable.prototype.distinct', () => {
     const e2 =   hot('-----------x-#');
     const e2subs =   '^            !';
     const expected = '--a--b-------#';
-    const selector = (x: string, y: string) => x === y;
 
-    expectObservable((<any>e1).distinct(selector, e2)).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct(null, e2))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
     expectSubscriptions(e2.subscriptions).toBe(e2subs);
   });
@@ -214,9 +195,8 @@ describe('Observable.prototype.distinct', () => {
     const e2subs =   '^          !         ';
     const unsub =    '           !         ';
     const expected = '--a--b------';
-    const selector = (x: string, y: string) => x === y;
 
-    expectObservable((<any>e1).distinct(selector, e2), unsub).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct(null, e2)), unsub).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
     expectSubscriptions(e2.subscriptions).toBe(e2subs);
   });
@@ -228,7 +208,7 @@ describe('Observable.prototype.distinct', () => {
     const e2subs =   '^                   !';
     const expected = '--a--b--------a--b--|';
 
-    expectObservable((<any>e1).distinct(null, e2)).toBe(expected);
+    expectObservable((<any>e1).pipe(distinct(null, e2))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
     expectSubscriptions(e2.subscriptions).toBe(e2subs);
   });

@@ -1,14 +1,17 @@
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { isEmpty, mergeMap } from 'rxjs/operators';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+import { of } from 'rxjs';
+
+declare function asDiagram(arg: string): Function;
 
 /** @test {isEmpty} */
-describe('Observable.prototype.isEmpty', () => {
+describe('isEmpty operator', () => {
   asDiagram('isEmpty')('should return true if source is empty', () => {
     const source = hot('-----|');
     const subs =       '^    !';
     const expected =   '-----(T|)';
 
-    expectObservable((<any>source).isEmpty()).toBe(expected, { T: true });
+    expectObservable((<any>source).pipe(isEmpty())).toBe(expected, { T: true });
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -17,7 +20,7 @@ describe('Observable.prototype.isEmpty', () => {
     const subs =            '^  !';
     const expected =        '---(F|)';
 
-    expectObservable((<any>source).isEmpty()).toBe(expected, { F: false });
+    expectObservable((<any>source).pipe(isEmpty())).toBe(expected, { F: false });
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -26,7 +29,7 @@ describe('Observable.prototype.isEmpty', () => {
     const subs =       '^ !';
     const expected =   '--#';
 
-    expectObservable((<any>source).isEmpty()).toBe(expected);
+    expectObservable((<any>source).pipe(isEmpty())).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -35,7 +38,7 @@ describe('Observable.prototype.isEmpty', () => {
     const subs =        '^';
     const expected =    '-';
 
-    expectObservable((<any>source).isEmpty()).toBe(expected);
+    expectObservable((<any>source).pipe(isEmpty())).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -44,7 +47,7 @@ describe('Observable.prototype.isEmpty', () => {
     const subs =        '(^!)';
     const expected =    '(T|)';
 
-    expectObservable((<any>source).isEmpty()).toBe(expected, { T: true });
+    expectObservable((<any>source).pipe(isEmpty())).toBe(expected, { T: true });
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -54,7 +57,7 @@ describe('Observable.prototype.isEmpty', () => {
     const subs =        '^     !           ';
     const expected =    '-------           ';
 
-    expectObservable((<any>source).isEmpty(), unsub).toBe(expected);
+    expectObservable((<any>source).pipe(isEmpty()), unsub).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);
   });
 
@@ -64,10 +67,11 @@ describe('Observable.prototype.isEmpty', () => {
     const expected =    '-------           ';
     const unsub =       '      !           ';
 
-    const result = (<any>source)
-      .mergeMap((x: string) => Rx.Observable.of(x))
-      .isEmpty()
-      .mergeMap((x: string) => Rx.Observable.of(x));
+    const result = (<any>source).pipe(
+      mergeMap((x: string) => of(x)),
+      isEmpty(),
+      mergeMap((x: string) => of(x))
+    );
 
     expectObservable(result, unsub).toBe(expected);
     expectSubscriptions(source.subscriptions).toBe(subs);

@@ -1,13 +1,13 @@
---require source-map-support/register
---require spec-js/helpers/test-helper.js
---require spec-js/helpers/ajax-helper.js
---ui spec-js/helpers/testScheduler-ui.js
+--require ts-node/register
+--require tsconfig-paths/register
+--require spec/helpers/polyfills.ts
+--require spec/helpers/testScheduler-ui.ts
+--ui spec/helpers/testScheduler-ui.ts
 
 --reporter dot
---bail
---full-trace
+
 --check-leaks
---globals WebSocket,FormData
+--globals WebSocket,FormData,XDomainRequest,ActiveXObject
 
 --recursive
 --timeout 5000

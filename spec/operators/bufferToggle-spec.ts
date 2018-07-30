@@ -1,11 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import { of, concat, timer, EMPTY } from 'rxjs';
+import { bufferToggle, mergeMap, mapTo } from 'rxjs/operators';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
 
-const Observable = Rx.Observable;
+declare function asDiagram(arg: string): Function;
 
 /** @test {bufferToggle} */
-describe('Observable.prototype.bufferToggle', () => {
+describe('bufferToggle operator', () => {
   asDiagram('bufferToggle')('should emit buffers using hot openings and hot closings', () => {
     const e1 =   hot('---a---b---c---d---e---f---g---|');
     const e2 =   hot('--o------------------o---------|');
@@ -16,7 +17,7 @@ describe('Observable.prototype.bufferToggle', () => {
       y: ['f'],
     };
 
-    const result = e1.bufferToggle(e2, (x: any) => e3);
+    const result = e1.pipe(bufferToggle(e2, (x: any) => e3));
 
     expectObservable(result).toBe(expected, values);
   });
@@ -38,10 +39,12 @@ describe('Observable.prototype.bufferToggle', () => {
     };
     const innerVals = ['x', 'y', 'z'];
 
-    expectObservable(e1.bufferToggle(e2, (x: string) => {
-      expect(x).to.equal(innerVals.shift());
-      return e3;
-    })).toBe(expected, values);
+    expectObservable(e1.pipe(
+      bufferToggle(e2, (x: string) => {
+        expect(x).to.equal(innerVals.shift());
+        return e3;
+      }))
+    ).toBe(expected, values);
   });
 
   it('should emit buffers using constying cold closings', () => {
@@ -63,7 +66,7 @@ describe('Observable.prototype.bufferToggle', () => {
     };
 
     let i = 0;
-    const result = e1.bufferToggle(e2, () => closings[i++]);
+    const result = e1.pipe(bufferToggle(e2, () => closings[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -91,7 +94,7 @@ describe('Observable.prototype.bufferToggle', () => {
     };
 
     let i = 0;
-    const result = e1.bufferToggle(e2, () => closings[i++].obs);
+    const result = e1.pipe(bufferToggle(e2, () => closings[i++].obs));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -116,7 +119,7 @@ describe('Observable.prototype.bufferToggle', () => {
     };
 
     let i = 0;
-    const result = e1.bufferToggle(e2, () => closings[i++]);
+    const result = e1.pipe(bufferToggle(e2, () => closings[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -138,7 +141,7 @@ describe('Observable.prototype.bufferToggle', () => {
     };
 
     let i = 0;
-    const result = e1.bufferToggle(e2, () => closings[i++]);
+    const result = e1.pipe(bufferToggle(e2, () => closings[i++]));
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -162,10 +165,11 @@ describe('Observable.prototype.bufferToggle', () => {
     };
 
     let i = 0;
-    const result = e1
-      .mergeMap((x: any) => Observable.of(x))
-      .bufferToggle(e2, () => closings[i++])
-      .mergeMap((x: any) => Observable.of(x));
+    const result = e1.pipe(
+      mergeMap((x: any) => of(x)),
+      bufferToggle(e2, () => closings[i++]),
+      mergeMap((x: any) => of(x))
+    );
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -183,12 +187,14 @@ describe('Observable.prototype.bufferToggle', () => {
     const expected =    '--------------#                           ';
 
     let i = 0;
-    const result = e1.bufferToggle(e2, () => {
-      if (i === 1) {
-        throw 'error';
-      }
-      return closings[i++];
-    });
+    const result = e1.pipe(
+      bufferToggle(e2, () => {
+        if (i === 1) {
+          throw 'error';
+        }
+        return closings[i++];
+      })
+    );
 
     expectObservable(result).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -209,7 +215,7 @@ describe('Observable.prototype.bufferToggle', () => {
     const expected =    '--------------#                     ';
 
     let i = 0;
-    const result = e1.bufferToggle(e2, () => closings[i++]);
+    const result = e1.pipe(bufferToggle(e2, () => closings[i++]));
 
     expectObservable(result).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -232,7 +238,7 @@ describe('Observable.prototype.bufferToggle', () => {
     };
 
     let i = 0;
-    const result = e1.bufferToggle(e2, () => closings[i++]);
+    const result = e1.pipe(bufferToggle(e2, () => closings[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -255,7 +261,7 @@ describe('Observable.prototype.bufferToggle', () => {
     };
 
     let i = 0;
-    const result = e1.bufferToggle(e2, () => closings[i++]);
+    const result = e1.pipe(bufferToggle(e2, () => closings[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -268,9 +274,9 @@ describe('Observable.prototype.bufferToggle', () => {
     const e2 =  cold('--o-----|');
     const e3 =  cold(  '-----c--|');
     const expected = '|';
-    const values = { x: [] };
+    const values = { x: [] as string[] };
 
-    const result = e1.bufferToggle(e2, () => e3);
+    const result = e1.pipe(bufferToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected, values);
   });
@@ -280,9 +286,9 @@ describe('Observable.prototype.bufferToggle', () => {
     const e2 =  cold('--o-----|');
     const e3 =  cold(  '-----c--|');
     const expected = '#';
-    const values = { x: [] };
+    const values = { x: [] as string[] };
 
-    const result = e1.bufferToggle(e2, () => e3);
+    const result = e1.pipe(bufferToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected, values);
   });
@@ -294,9 +300,9 @@ describe('Observable.prototype.bufferToggle', () => {
     const unsub =    '                                            !';
     const subs =     '^                                           !';
     const expected = '----x-----x------x-----x---x-----------------';
-    const values = { x: [] };
+    const values = { x: [] as string[] };
 
-    const result = e1.bufferToggle(e2, () => e3);
+    const result = e1.pipe(bufferToggle(e2, () => e3));
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -308,7 +314,7 @@ describe('Observable.prototype.bufferToggle', () => {
     const e3 =  cold(   '--c-|');
     const expected =    '-----------------------------------|';
 
-    const result = e1.bufferToggle(e2, () => e3);
+    const result = e1.pipe(bufferToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected);
   });
@@ -323,7 +329,7 @@ describe('Observable.prototype.bufferToggle', () => {
       y: ['f', 'g', 'h']
     };
 
-    const result = e1.bufferToggle(e2, () => e3);
+    const result = e1.pipe(bufferToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected, values);
   });
@@ -336,7 +342,7 @@ describe('Observable.prototype.bufferToggle', () => {
     const e3 = cold(    '--c-|');
     const expected =    '#';
 
-    const result = e1.bufferToggle(e2, () => e3);
+    const result = e1.pipe(bufferToggle(e2, () => e3));
 
     expectObservable(result).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -344,17 +350,20 @@ describe('Observable.prototype.bufferToggle', () => {
   });
 
   it('should accept openings resolved promise', (done: MochaDone) => {
-    const e1 = Observable.concat(
-      Observable.timer(10).mapTo(1),
-      Observable.timer(100).mapTo(2),
-      Observable.timer(150).mapTo(3),
-      Observable.timer(200).mapTo(4));
+    const e1 = concat(
+      timer(10).pipe(mapTo(1)),
+      timer(100).pipe(mapTo(2)),
+      timer(150).pipe(mapTo(3)),
+      timer(200).pipe(mapTo(4))
+    );
 
     const expected = [[1]];
 
-    e1.bufferToggle(new Promise((resolve: any) => { resolve(42); }), () => {
-      return Observable.timer(50);
-    }).subscribe((x) => {
+    e1.pipe(
+      bufferToggle(new Promise((resolve: any) => { resolve(42); }), () => {
+        return timer(50);
+      })
+    ).subscribe((x) => {
       expect(x).to.deep.equal(expected.shift());
     }, (x) => {
       done(new Error('should not be called'));
@@ -365,17 +374,19 @@ describe('Observable.prototype.bufferToggle', () => {
   });
 
   it('should accept openings rejected promise', (done: MochaDone) => {
-    const e1 = Observable.concat(Observable.of(1),
-      Observable.timer(10).mapTo(2),
-      Observable.timer(10).mapTo(3),
-      Observable.timer(100).mapTo(4)
-      );
+    const e1 = concat(of(1),
+      timer(10).pipe(mapTo(2)),
+      timer(10).pipe(mapTo(3)),
+      timer(100).pipe(mapTo(4))
+    );
 
     const expected = 42;
 
-    e1.bufferToggle(new Promise((resolve: any, reject: any) => { reject(expected); }), () => {
-      return Observable.timer(50);
-    }).subscribe((x) => {
+    e1.pipe(
+      bufferToggle(new Promise((resolve: any, reject: any) => { reject(expected); }), () => {
+        return timer(50);
+      })
+    ).subscribe((x) => {
       done(new Error('should not be called'));
     }, (x) => {
       expect(x).to.equal(expected);
@@ -386,14 +397,14 @@ describe('Observable.prototype.bufferToggle', () => {
   });
 
   it('should accept closing selector that returns a resolved promise', (done: MochaDone) => {
-    const e1 = Observable.concat(Observable.of(1),
-      Observable.timer(10).mapTo(2),
-      Observable.timer(10).mapTo(3),
-      Observable.timer(100).mapTo(4)
-      );
+    const e1 = concat(of(1),
+      timer(10).pipe(mapTo(2)),
+      timer(10).pipe(mapTo(3)),
+      timer(100).pipe(mapTo(4))
+    );
     const expected = [[1]];
 
-    e1.bufferToggle(Observable.of(10), () => new Promise((resolve: any) => { resolve(42); }))
+    e1.pipe(bufferToggle(of(10), () => new Promise((resolve: any) => { resolve(42); })))
       .subscribe((x) => {
         expect(x).to.deep.equal(expected.shift());
       }, () => {
@@ -405,15 +416,15 @@ describe('Observable.prototype.bufferToggle', () => {
   });
 
   it('should accept closing selector that returns a rejected promise', (done: MochaDone) => {
-    const e1 = Observable.concat(Observable.of(1),
-      Observable.timer(10).mapTo(2),
-      Observable.timer(10).mapTo(3),
-      Observable.timer(100).mapTo(4)
+    const e1 = concat(of(1),
+      timer(10).pipe(mapTo(2)),
+      timer(10).pipe(mapTo(3)),
+      timer(100).pipe(mapTo(4))
       );
 
     const expected = 42;
 
-    e1.bufferToggle(Observable.of(10), () => new Promise((resolve: any, reject: any) => { reject(expected); }))
+    e1.pipe(bufferToggle(of(10), () => new Promise((resolve: any, reject: any) => { reject(expected); })))
       .subscribe((x) => {
         done(new Error('should not be called'));
       }, (x) => {
@@ -430,7 +441,7 @@ describe('Observable.prototype.bufferToggle', () => {
     const e2 =     cold('--x-----------y--------z---|        ');
     const expected =    '--l-----------m--------n-----------|';
 
-    const result = e1.bufferToggle(e2, () => Observable.empty());
+    const result = e1.pipe(bufferToggle(e2, () => EMPTY));
 
     expectObservable(result).toBe(expected, {l: [], m: [], n: []});
     expectSubscriptions(e1.subscriptions).toBe(subs);

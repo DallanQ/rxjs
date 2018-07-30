@@ -1,7 +1,7 @@
-import {expect} from 'chai';
-import * as Rx from '../dist/cjs/Rx';
+import { expect } from 'chai';
+import * as Rx from 'rxjs/Rx';
+import { expectObservable } from './helpers/marble-testing';
 
-declare const expectObservable;
 const Notification = Rx.Notification;
 
 /** @test {Notification} */
@@ -11,13 +11,18 @@ describe('Notification', () => {
     expect(Notification).to.be.a('function');
   });
 
+  it('should not allow convert to observable if given kind is unknown', () => {
+    const n = new Notification('x');
+    expect(() => n.toObservable()).to.throw();
+  });
+
   describe('createNext', () => {
     it('should return a Notification', () => {
       const n = Notification.createNext('test');
       expect(n instanceof Notification).to.be.true;
       expect(n.value).to.equal('test');
       expect(n.kind).to.equal('N');
-      expect(n.exception).to.be.a('undefined');
+      expect(n.error).to.be.a('undefined');
       expect(n.hasValue).to.be.true;
     });
   });
@@ -28,7 +33,7 @@ describe('Notification', () => {
       expect(n instanceof Notification).to.be.true;
       expect(n.value).to.be.a('undefined');
       expect(n.kind).to.equal('E');
-      expect(n.exception).to.equal('test');
+      expect(n.error).to.equal('test');
       expect(n.hasValue).to.be.false;
     });
   });
@@ -39,7 +44,7 @@ describe('Notification', () => {
       expect(n instanceof Notification).to.be.true;
       expect(n.value).to.be.a('undefined');
       expect(n.kind).to.equal('C');
-      expect(n.exception).to.be.a('undefined');
+      expect(n.error).to.be.a('undefined');
       expect(n.hasValue).to.be.false;
     });
   });
@@ -157,7 +162,7 @@ describe('Notification', () => {
 
     it('should accept observer for error Notification', () => {
       let observed = false;
-      const n = Notification.createError();
+      const n = Notification.createError<string>();
       const observer = Rx.Subscriber.create((x: string) => {
         throw 'should not be called';
       }, (err: any) => {

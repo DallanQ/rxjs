@@ -1,16 +1,18 @@
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
+import { cold, expectObservable, time } from '../helpers/marble-testing';
+import { timer, NEVER, merge } from 'rxjs';
+import { TestScheduler } from 'rxjs/testing';
+import { mergeMap, take, concat } from 'rxjs/operators';
 
-declare const {hot, asDiagram, time, expectObservable};
-declare const rxTestScheduler: Rx.TestScheduler;
-
-const Observable = Rx.Observable;
+declare const asDiagram: any;
+declare const rxTestScheduler: TestScheduler;
 
 /** @test {timer} */
-describe('Observable.timer', () => {
+describe('timer', () => {
   asDiagram('timer(3000, 1000)')('should create an observable emitting periodically', () => {
-    const e1 = Observable.timer(60, 20, rxTestScheduler)
-      .take(4) // make it actually finite, so it can be rendered
-      .concat(Observable.never()); // but pretend it's infinite by not completing
+    const e1 = timer(60, 20, rxTestScheduler).pipe(
+      take(4), // make it actually finite, so it can be rendered
+      concat(NEVER) // but pretend it's infinite by not completing
+    );
     const expected = '------a-b-c-d-';
     const values = {
       a: 0,
@@ -25,7 +27,7 @@ describe('Observable.timer', () => {
     const dueTime = time('-----|');
     const expected =     '-----(x|)';
 
-    const source = Observable.timer(dueTime, undefined, rxTestScheduler);
+    const source = timer(dueTime, undefined, rxTestScheduler);
     expectObservable(source).toBe(expected, {x: 0});
   });
 
@@ -33,7 +35,7 @@ describe('Observable.timer', () => {
     const dueTime = time('|');
     const expected =     '(x|)';
 
-    const source = Observable.timer(dueTime, rxTestScheduler);
+    const source = timer(dueTime, rxTestScheduler);
     expectObservable(source).toBe(expected, {x: 0});
   });
 
@@ -42,7 +44,7 @@ describe('Observable.timer', () => {
     const period  = time(    '--|');
     const expected =     '----a-b-c-d-(e|)';
 
-    const source = Observable.timer(dueTime, period, rxTestScheduler).take(5);
+    const source = timer(dueTime, period, rxTestScheduler).pipe(take(5));
     const values = { a: 0, b: 1, c: 2, d: 3, e: 4};
     expectObservable(source).toBe(expected, values);
   });
@@ -52,7 +54,7 @@ describe('Observable.timer', () => {
     const period  = time('---|');
     const expected =     'a--b--c--d--(e|)';
 
-    const source = Observable.timer(dueTime, period, rxTestScheduler).take(5);
+    const source = timer(dueTime, period, rxTestScheduler).pipe(take(5));
     const values = { a: 0, b: 1, c: 2, d: 3, e: 4};
     expectObservable(source).toBe(expected, values);
   });
@@ -63,7 +65,7 @@ describe('Observable.timer', () => {
     const expected = 'a--b--c--d--e';
     const unsub   =  '^            !';
 
-    const source = Observable.timer(dueTime, period, rxTestScheduler);
+    const source = timer(dueTime, period, rxTestScheduler);
     const values = { a: 0, b: 1, c: 2, d: 3, e: 4};
     expectObservable(source, unsub).toBe(expected, values);
   });
@@ -73,7 +75,7 @@ describe('Observable.timer', () => {
     const expected =    '----(a|)';
 
     const dueTime = new Date(rxTestScheduler.now() + offset);
-    const source = Observable.timer(dueTime, null, rxTestScheduler);
+    const source = timer(dueTime, null, rxTestScheduler);
     expectObservable(source).toBe(expected, {a: 0});
   });
 
@@ -83,8 +85,25 @@ describe('Observable.timer', () => {
     const expected =    '----a-b-c-d-(e|)';
 
     const dueTime = new Date(rxTestScheduler.now() + offset);
-    const source = Observable.timer(dueTime, period, rxTestScheduler).take(5);
+    const source = timer(dueTime, period, rxTestScheduler).pipe(take(5));
     const values = { a: 0, b: 1, c: 2, d: 3, e: 4};
     expectObservable(source).toBe(expected, values);
+  });
+
+  it('should still target the same date if a date is provided even for the ' +
+    'second subscription', () => {
+      const offset = time('----|    ');
+      const t1 = cold(    'a|       ');
+      const t2 = cold(    '--a|     ');
+      const expected =    '----(aa|)';
+
+      const dueTime = new Date(rxTestScheduler.now() + offset);
+      const source = timer(dueTime, null, rxTestScheduler);
+
+      const testSource = merge(t1, t2).pipe(
+        mergeMap(() => source)
+      );
+
+      expectObservable(testSource).toBe(expected, {a: 0});
   });
 });

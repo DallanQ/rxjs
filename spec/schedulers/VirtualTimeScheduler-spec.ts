@@ -1,7 +1,6 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
-
-const VirtualTimeScheduler = Rx.VirtualTimeScheduler;
+import { expect } from 'chai';
+import * as Rx from 'rxjs/Rx';
+import { SchedulerAction, Subscription, VirtualAction, VirtualTimeScheduler } from 'rxjs';
 
 /** @test {VirtualTimeScheduler} */
 describe('VirtualTimeScheduler', () => {
@@ -12,7 +11,7 @@ describe('VirtualTimeScheduler', () => {
 
   it('should schedule things in order when flushed if each this is scheduled synchrously', () => {
     const v = new VirtualTimeScheduler();
-    const invoked = [];
+    const invoked: number[] = [];
     const invoke = (state: number) => {
       invoked.push(state);
     };
@@ -29,7 +28,7 @@ describe('VirtualTimeScheduler', () => {
 
   it('should schedule things in order when flushed if each this is scheduled at random', () => {
     const v = new VirtualTimeScheduler();
-    const invoked = [];
+    const invoked: number[] = [];
     const invoke = (state: number) => {
       invoked.push(state);
     };
@@ -47,7 +46,7 @@ describe('VirtualTimeScheduler', () => {
 
   it('should schedule things in order when there are negative delays', () => {
     const v = new VirtualTimeScheduler();
-    const invoked = [];
+    const invoked: number[] = [];
     const invoke = (state: number) => {
       invoked.push(state);
     };
@@ -68,15 +67,27 @@ describe('VirtualTimeScheduler', () => {
     let count = 0;
     const expected = [100, 200, 300];
 
-    v.schedule(function(state) {
+    v.schedule<string>(function(this: SchedulerAction<string>, state: string) {
       if (++count === 3) {
         return;
       }
-      expect(this.delay).to.equal(expected.shift());
-      this.schedule(state, this.delay);
+      const virtualAction = this as VirtualAction<string>;
+      expect(virtualAction.delay).to.equal(expected.shift());
+      this.schedule(state, virtualAction.delay);
     }, 100, 'test');
 
     v.flush();
     expect(count).to.equal(3);
+  });
+
+  it('should not execute virtual actions that have been rescheduled before flush', () => {
+    const v = new VirtualTimeScheduler();
+    let messages: string[] = [];
+    let action: VirtualAction<string> = <VirtualAction<string>> v.schedule(function(state: string) {
+      messages.push(state);
+    }, 10, 'first message');
+    action = <VirtualAction<string>> action.schedule('second message' , 10);
+    v.flush();
+    expect(messages).to.deep.equal(['second message']);
   });
 });

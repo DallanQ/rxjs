@@ -1,11 +1,12 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import { of, EMPTY } from 'rxjs';
+import { bufferWhen, mergeMap, takeWhile } from 'rxjs/operators';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
 
-const Observable = Rx.Observable;
+declare function asDiagram(arg: string): Function;
 
 /** @test {bufferWhen} */
-describe('Observable.prototype.bufferWhen', () => {
+describe('bufferWhen operator', () => {
   asDiagram('bufferWhen')('should emit buffers that close and reopen', () => {
     const e1 = hot('--a--^---b---c---d---e---f---g---------|');
     const e2 = cold(    '--------------(s|)');
@@ -14,10 +15,10 @@ describe('Observable.prototype.bufferWhen', () => {
     const values = {
       x: ['b', 'c', 'd'],
       y: ['e', 'f', 'g'],
-      z: []
+      z: [] as string[]
     };
 
-    expectObservable(e1.bufferWhen(() => e2)).toBe(expected, values);
+    expectObservable(e1.pipe(bufferWhen(() => e2))).toBe(expected, values);
   });
 
   it('should emit buffers using constying cold closings', () => {
@@ -35,7 +36,7 @@ describe('Observable.prototype.bufferWhen', () => {
     };
 
     let i = 0;
-    const result = e1.bufferWhen(() => closings[i++]);
+    const result = e1.pipe(bufferWhen(() => closings[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -59,7 +60,7 @@ describe('Observable.prototype.bufferWhen', () => {
     };
 
     let i = 0;
-    const result = e1.bufferWhen(() => closings[i++].obs);
+    const result = e1.pipe(bufferWhen(() => closings[i++].obs));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -86,7 +87,7 @@ describe('Observable.prototype.bufferWhen', () => {
     };
 
     let i = 0;
-    const result = e1.bufferWhen(() => closings[i++]);
+    const result = e1.pipe(bufferWhen(() => closings[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -111,7 +112,7 @@ describe('Observable.prototype.bufferWhen', () => {
     };
 
     let i = 0;
-    const result = e1.bufferWhen(() => closings[i++]);
+    const result = e1.pipe(bufferWhen(() => closings[i++]));
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -136,10 +137,11 @@ describe('Observable.prototype.bufferWhen', () => {
     };
 
     let i = 0;
-    const result = e1
-      .mergeMap((x: any) => Observable.of(x))
-      .bufferWhen(() => closings[i++])
-      .mergeMap((x: any) => Observable.of(x));
+    const result = e1.pipe(
+      mergeMap((x: any) => of(x)),
+      bufferWhen(() => closings[i++]),
+      mergeMap((x: any) => of(x))
+    );
 
     expectObservable(result, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -160,12 +162,14 @@ describe('Observable.prototype.bufferWhen', () => {
     const values = { x: ['b', 'c', 'd'] };
 
     let i = 0;
-    const result = e1.bufferWhen(() => {
-      if (i === 1) {
-        throw 'error';
-      }
-      return closings[i++];
-    });
+    const result = e1.pipe(
+      bufferWhen(() => {
+        if (i === 1) {
+          throw 'error';
+        }
+        return closings[i++];
+      })
+    );
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -184,7 +188,7 @@ describe('Observable.prototype.bufferWhen', () => {
     const values = { x: ['b', 'c', 'd'] };
 
     let i = 0;
-    const result = e1.bufferWhen(() => closings[i++]);
+    const result = e1.pipe(bufferWhen(() => closings[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -204,7 +208,7 @@ describe('Observable.prototype.bufferWhen', () => {
     const values = { x: ['b', 'c', 'd'] };
 
     let i = 0;
-    const result = e1.bufferWhen(() => closings[i++]);
+    const result = e1.pipe(bufferWhen(() => closings[i++]));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);
@@ -223,7 +227,7 @@ describe('Observable.prototype.bufferWhen', () => {
       x: ['b', 'c', 'd']
     };
 
-    const result = e1.bufferWhen(() => e2);
+    const result = e1.pipe(bufferWhen(() => e2));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e2.subscriptions).toBe(e2subs);
@@ -235,10 +239,10 @@ describe('Observable.prototype.bufferWhen', () => {
     const e1subs =   '(^!)';
     const expected = '(x|)';
     const values = {
-      x: []
+      x: [] as string[]
     };
 
-    const result = e1.bufferWhen(() => e2);
+    const result = e1.pipe(bufferWhen(() => e2));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -250,10 +254,10 @@ describe('Observable.prototype.bufferWhen', () => {
     const e1subs =   '(^!)';
     const expected = '#';
     const values = {
-      x: []
+      x: [] as string[]
     };
 
-    const result = e1.bufferWhen(() => e2);
+    const result = e1.pipe(bufferWhen(() => e2));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -272,10 +276,10 @@ describe('Observable.prototype.bufferWhen', () => {
                    '                                        ^   !'];
     const expected = '--------x-------x-------x-------x-------x----';
     const values = {
-      x: []
+      x: [] as string[]
     };
 
-    const source = e1.bufferWhen(() => e2);
+    const source = e1.pipe(bufferWhen(() => e2));
 
     expectObservable(source, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -290,7 +294,7 @@ describe('Observable.prototype.bufferWhen', () => {
       x: ['b', 'c', 'd', 'e', 'f', 'g', 'h']
     };
 
-    expectObservable(e1.bufferWhen(() => e2)).toBe(expected, values);
+    expectObservable(e1.pipe(bufferWhen(() => e2))).toBe(expected, values);
   });
 
   // bufferWhen is not supposed to handle a factory that returns always empty
@@ -298,21 +302,21 @@ describe('Observable.prototype.bufferWhen', () => {
   // buffer in a synchronous infinite loop until the stack overflows. This also
   // happens with buffer in RxJS 4.
   it('should NOT handle hot inner empty', (done: MochaDone) => {
-    const source = Observable.of(1, 2, 3, 4, 5, 6, 7, 8, 9);
-    const closing = Observable.empty();
+    const source = of(1, 2, 3, 4, 5, 6, 7, 8, 9);
+    const closing = EMPTY;
     const TOO_MANY_INVOCATIONS = 30;
 
-    source
-      .bufferWhen(() => closing)
-      .takeWhile((val: any, index: number) => index < TOO_MANY_INVOCATIONS)
-      .subscribe((val: any) => {
-        expect(Array.isArray(val)).to.be.true;
-        expect(val.length).to.equal(0);
-      }, (err: any) => {
-        done(new Error('should not be called'));
-      }, () => {
-        done();
-      });
+    source.pipe(
+      bufferWhen(() => closing),
+      takeWhile((val: any, index: number) => index < TOO_MANY_INVOCATIONS)
+    ).subscribe((val: any) => {
+      expect(Array.isArray(val)).to.be.true;
+      expect(val.length).to.equal(0);
+    }, (err: any) => {
+      done(new Error('should not be called'));
+    }, () => {
+      done();
+    });
   });
 
   it('should handle inner throw', () => {
@@ -325,7 +329,7 @@ describe('Observable.prototype.bufferWhen', () => {
       x: ['b', 'c', 'd', 'e', 'f', 'g', 'h']
     };
 
-    const result = e1.bufferWhen(() => e2);
+    const result = e1.pipe(bufferWhen(() => e2));
 
     expectObservable(result).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -342,10 +346,10 @@ describe('Observable.prototype.bufferWhen', () => {
     const values = {
       x: ['b', 'c', 'd'],
       y: ['e', 'f', 'g', 'h'],
-      z: []
+      z: [] as string[]
     };
 
-    const source = e1.bufferWhen(() => e2);
+    const source = e1.pipe(bufferWhen(() => e2));
 
     expectObservable(source, unsub).toBe(expected, values);
     expectSubscriptions(e1.subscriptions).toBe(subs);

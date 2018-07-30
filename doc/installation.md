@@ -1,100 +1,72 @@
 ## ES6 via npm
 
-```none
-npm install rxjs-es
+```shell
+npm install rxjs@beta
 ```
 
-To import the entire core set of functionality:
+Import just the parts you need and use them
 
 ```js
-import Rx from 'rxjs/Rx';
+import { of, fromEvent } from 'rxjs';
+import { map, filter } from 'rxjs/operators';
 
-Rx.Observable.of(1,2,3)
+of(1, 2, 3).pipe(
+  map(x => x + '!!!'),
+);
+
+fromEvent(input, 'input').pipe(
+  map(e => e.target.value),
+  filter(text => text.length < 10),
+);
 ```
 
-To import only what you need by patching (this is useful for size-sensitive bundling):
-
-```js
-import {Observable} from 'rxjs/Observable';
-import 'rxjs/add/operator/map';
-
-Observable.of(1,2,3).map(x => x + '!!!'); // etc
-```
-
-To import what you need and use it with ES next function bind (best overall method, if possible):
-
-```js
-import {Observable} from 'rxjs/Observable';
-import {map} from 'rxjs/operator/map';
-
-Observable.of(1,2,3)::map(x => x + '!!!'); // etc
-```
 
 ## CommonJS via npm
 
-```none
-npm install rxjs
+```shell
+npm install rxjs@beta
 ```
 
-Import all core functionality:
+Usage is pretty much the same thing, only with require:
 
 ```js
-var Rx = require('rxjs/Rx');
+const { of, fromEvent } = require('rxjs');
+const { map, filter } = require('rxjs/operators');
 
-Rx.Observable.of(1,2,3); // etc
+of(1, 2, 3).pipe(
+  map(x => x + '!!!'),
+);
+
+fromEvent(input, 'input').pipe(
+  map(e => e.target.value),
+  filter(text => text.length < 10),
+);
 ```
 
-Import only what you need and patch Observable (this is useful in size-sensitive bundling scenarios):
+## UMD (global script)
+
+You can use a CDN (shown below), if you like. In this case, everything is in the same location as it would be in the ESM or CJS versions, but they're namespaced like `rxjs` or `rxjs.operators` instead of `rxjs` and `rxjs/operators`.
+
 
 ```js
-var Observable = require('rxjs/Observable').Observable;
-// patch Observable with appropriate methods
-require('rxjs/add/operator/map');
+const { of, fromEvent } = rxjs;
+const { map, filter } = rxjs.operators;
 
-Observable.of(1,2,3).map(function (x) { return x + '!!!'; }); // etc
-```
+of(1, 2, 3).pipe(
+  map(x => x + '!!!'),
+);
 
-Import operators and use them _manually_ you can do the following (this is also useful for bundling):
-
-```js
-var Observable = require('rxjs/Observable').Observable;
-var map = require('rxjs/operator/map').map;
-
-map.call(Observable.of(1,2,3), function (x) { return x + '!!!'; });
-```
-
-You can also use the above method to build your own Observable and export it from your own module.
-
-### CommonJS with TypeScript
-If you recieve an error like `error TS2304: Cannot find name 'Symbol'` or `error TS2304: Cannot find name 'Iterable'` when using RxJS you may need to install a supplemental set of typings.  This small set of interfaces allows RxJS to target ES6, while still allowing the TypeScript compiler to target ES5.
-
-1. For [`typings`](https://github.com/typings/typings) users:
-
-    `typings install rxjs-symbol-typings`
-    
-2. If you're not using typings the interfaces can be copied from [/spec/es5.d.ts](https://github.com/ReactiveX/rxjs/blob/master/spec/es5.d.ts) or from the [typings repo](https://github.com/david-driscoll/rxjs-symbol-typings/blob/master/rxjs-symbol-shim.d.ts).
-
-3. Change your `tsconfig.json` to target `es6` or `es2015`.
-   
-   Keep in mind that targeting ES6 may have unintended consequnces and allow you to use features that may not exist on your target platform or browser.  In this case it is recommended to use another compiler such as [babel](http://babeljs.io/) in your compile pipeline to run after the TypeScript compiler.  
-    
-## All Module Types (CJS/ES6/AMD/TypeScript) via npm
-
-To install this library via [npm](https://www.npmjs.org) **version 3**, use the following command:
-
-```none
-npm install @reactivex/rxjs
-```
-
-If you are using npm **version 2** before this library has achieved a stable version, you need to specify the library version explicitly:
-
-```none
-npm install @reactivex/rxjs@5.0.0-beta.1
+fromEvent(input, 'input').pipe(
+  map(e => e.target.value),
+  filter(text => text.length < 10),
+);
 ```
 
 ## CDN
 
-For CDN, you can use [npmcdn](https://npmcdn.com). Just replace `version` with the current
-version on the link below:
+For CDN, you can use [unpkg](https://unpkg.com). 
 
-https://npmcdn.com/@reactivex/rxjs@version/dist/global/Rx.umd.js
+- https://unpkg.com/rxjs@beta/bundles/rxjs.umd.js
+- https://unpkg.com/rxjs@beta/bundles/rxjs.umd.min.js
+
+

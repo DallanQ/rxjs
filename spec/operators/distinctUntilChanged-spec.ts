@@ -1,15 +1,16 @@
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { distinctUntilChanged, mergeMap } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
 
-const Observable = Rx.Observable;
+declare function asDiagram(arg: string): Function;
 
 /** @test {distinctUntilChanged} */
-describe('Observable.prototype.distinctUntilChanged', () => {
+describe('distinctUntilChanged operator', () => {
   asDiagram('distinctUntilChanged')('should distinguish between values', () => {
     const e1 =   hot('-1--2-2----1-3-|');
     const expected = '-1--2------1-3-|';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
   });
 
   it('should distinguish between values', () => {
@@ -17,7 +18,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^                   !';
     const expected = '--a--------b-----a--|';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -26,7 +27,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^                  ';
     const expected = '--a--------b-----a-';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -35,7 +36,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^';
     const expected = '-';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -44,7 +45,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^';
     const expected = '-';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -53,7 +54,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '(^!)';
     const expected = '|';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -62,7 +63,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^     !';
     const expected = '------|';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -71,15 +72,15 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^    !';
     const expected = '--a--|';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
   it('should emit if source is scalar', () => {
-    const e1 = Observable.of('a');
+    const e1 = of('a');
     const expected = '(a|)';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
   });
 
   it('should raises error if source raises error', () => {
@@ -87,7 +88,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^       !';
     const expected = '--a-----#';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -96,7 +97,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '(^!)';
     const expected = '#';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -105,7 +106,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^                   !';
     const expected = '--a--b--c--d--e--f--|';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -115,7 +116,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const expected = '--a--b-----          ';
     const unsub =    '          !          ';
 
-    const result = e1.distinctUntilChanged();
+    const result = e1.pipe(distinctUntilChanged());
 
     expectObservable(result, unsub).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -127,10 +128,11 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const expected = '--a--b-----          ';
     const unsub =    '          !          ';
 
-    const result = e1
-      .mergeMap((x: any) => Observable.of(x))
-      .distinctUntilChanged()
-      .mergeMap((x: any) => Observable.of(x));
+    const result = e1.pipe(
+      mergeMap((x: any) => of(x)),
+      distinctUntilChanged(),
+      mergeMap((x: any) => of(x)),
+    );
 
     expectObservable(result, unsub).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
@@ -141,7 +143,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^                   !';
     const expected = '--a-----------------|';
 
-    expectObservable(e1.distinctUntilChanged()).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged())).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -150,7 +152,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^                   !';
     const expected = '--a-----------------|';
 
-    expectObservable(e1.distinctUntilChanged(() => { return true; })).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged(() => { return true; }))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -159,7 +161,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const e1subs =   '^                   !';
     const expected = '--a--a--a--a--a--a--|';
 
-    expectObservable(e1.distinctUntilChanged(() => { return false; })).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged(() => { return false; }))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -169,7 +171,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const expected = '--a-----c-----e-----|';
     const comparator = (x: number, y: number) => y % 2 === 0;
 
-    expectObservable(e1.distinctUntilChanged(comparator)).toBe(expected, {a: 1, c: 3, e: 5});
+    expectObservable(e1.pipe(distinctUntilChanged(comparator))).toBe(expected, {a: 1, c: 3, e: 5});
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -184,7 +186,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
       return x === y;
     };
 
-    expectObservable(e1.distinctUntilChanged(comparator)).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged(comparator))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -195,7 +197,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
     const comparator = (x: number, y: number) => y % 2 === 1;
     const keySelector = (x: number) => x % 2;
 
-    expectObservable(e1.distinctUntilChanged(comparator, keySelector)).toBe(expected, {a: 1, b: 2, d: 4, f: 6});
+    expectObservable(e1.pipe(distinctUntilChanged(comparator, keySelector))).toBe(expected, {a: 1, b: 2, d: 4, f: 6});
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 
@@ -210,7 +212,7 @@ describe('Observable.prototype.distinctUntilChanged', () => {
       return x;
     };
 
-    expectObservable(e1.distinctUntilChanged(null, keySelector)).toBe(expected);
+    expectObservable(e1.pipe(distinctUntilChanged(null, keySelector))).toBe(expected);
     expectSubscriptions(e1.subscriptions).toBe(e1subs);
   });
 });

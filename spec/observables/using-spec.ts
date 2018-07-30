@@ -1,17 +1,15 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx.KitchenSink';
+import { expect } from 'chai';
+import { using, range, Subscription } from 'rxjs';
+import { take } from 'rxjs/operators';
 
-const Observable = Rx.Observable;
-const Subscription = Rx.Subscription;
-
-describe('Observable.using', () => {
+describe('using', () => {
   it('should dispose of the resource when the subscription is disposed', (done) => {
     let disposed = false;
-    const source = Observable.using(
+    const source = using(
       () => new Subscription(() => disposed = true),
-      (resource) => Observable.range(0, 3)
+      (resource) => range(0, 3)
     )
-    .take(2);
+    .pipe(take(2));
 
     source.subscribe();
 
@@ -26,7 +24,7 @@ describe('Observable.using', () => {
     const expected = 42;
 
     let disposed = false;
-    const e1 = Observable.using(
+    const e1 = using(
       () => new Subscription(() => disposed = true),
       (resource) => new Promise((resolve: any) => { resolve(expected); }));
 
@@ -43,7 +41,7 @@ describe('Observable.using', () => {
     const expected = 42;
 
     let disposed = false;
-    const e1 = Observable.using(
+    const e1 = using(
       () => new Subscription(() => disposed = true),
       (resource) => new Promise((resolve: any, reject: any) => { reject(expected); }));
 
@@ -61,7 +59,7 @@ describe('Observable.using', () => {
     const expectedError = 'expected';
     const error = 'error';
 
-    const source = Observable.using(
+    const source = using(
       () => {
         throw expectedError;
       },
@@ -84,7 +82,7 @@ describe('Observable.using', () => {
     const error = 'error';
     let disposed = false;
 
-    const source = Observable.using(
+    const source = using(
       () => new Subscription(() => disposed = true),
       (resource) => {
         throw error;

@@ -1,22 +1,22 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-declare const {hot, cold, asDiagram, expectObservable, expectSubscriptions};
+import { expect } from 'chai';
+import { map, tap, mergeMap } from 'rxjs/operators';
+import { hot, cold, expectObservable, expectSubscriptions } from '../helpers/marble-testing';
+import { of } from 'rxjs';
 
-const Observable = Rx.Observable;
+declare function asDiagram(arg: string): Function;
 
 // function shortcuts
-const addDrama = function (x) { return x + '!'; };
-const identity = function (x) { return x; };
-const throwError = function () { throw new Error(); };
+const addDrama = function (x: number | string) { return x + '!'; };
+const identity = function <T>(x: T) { return x; };
 
 /** @test {map} */
-describe('Observable.prototype.map', () => {
+describe('map operator', () => {
   asDiagram('map(x => 10 * x)')('should map multiple values', () => {
     const a =   cold('--1--2--3--|');
     const asubs =    '^          !';
     const expected = '--x--y--z--|';
 
-    const r = a.map(function (x) { return 10 * x; });
+    const r = a.pipe(map(function (x) { return 10 * (+x); }));
 
     expectObservable(r).toBe(expected, {x: 10, y: 20, z: 30});
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -27,7 +27,7 @@ describe('Observable.prototype.map', () => {
     const asubs =    '^    !';
     const expected = '--y--|';
 
-    const r = a.map(addDrama);
+    const r = a.pipe(map(addDrama));
 
     expectObservable(r).toBe(expected, {y: '42!'});
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -35,7 +35,7 @@ describe('Observable.prototype.map', () => {
 
   it('should throw an error if not passed a function', () => {
     expect(() => {
-      Observable.of(1, 2, 3).map(<any>'potato');
+      of(1, 2, 3).pipe(map(<any>'potato'));
     }).to.throw(TypeError, 'argument is not a function. Are you looking for `mapTo()`?');
   });
 
@@ -44,7 +44,7 @@ describe('Observable.prototype.map', () => {
     const asubs =    '^          !';
     const expected = '--x--y--z--|';
 
-    const r = a.map(addDrama);
+    const r = a.pipe(map(addDrama));
 
     expectObservable(r).toBe(expected, {x: '1!', y: '2!', z: '3!'});
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -55,9 +55,9 @@ describe('Observable.prototype.map', () => {
     const asubs =    '^ !   ';
     const expected = '--#   ';
 
-    const r = a.map((x: any) => {
+    const r = a.pipe(map((x: any) => {
       throw 'too bad';
-    });
+    }));
 
     expectObservable(r).toBe(expected, null, 'too bad');
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -68,7 +68,7 @@ describe('Observable.prototype.map', () => {
     const asubs =    '(^!)';
     const expected = '#';
 
-    const r = a.map(identity);
+    const r = a.pipe(map(identity));
     expectObservable(r).toBe(expected);
     expectSubscriptions(a.subscriptions).toBe(asubs);
   });
@@ -78,19 +78,9 @@ describe('Observable.prototype.map', () => {
     const asubs =    '^       !';
     const expected = '--x--y--#';
 
-    const r = a.map(addDrama);
+    const r = a.pipe(map(addDrama));
     expectObservable(r).toBe(expected, {x: '1!', y: '2!'}, 'too bad');
     expectSubscriptions(a.subscriptions).toBe(asubs);
-  });
-
-  it('should propagate errors from subscribe', () => {
-    const r = () => {
-      Observable.of(1)
-        .map(identity)
-        .subscribe(throwError);
-    };
-
-    expect(r).to.throw();
   });
 
   it('should not map an empty observable', () => {
@@ -99,11 +89,12 @@ describe('Observable.prototype.map', () => {
     const expected = '|';
 
     let invoked = 0;
-    const r = a
-      .map((x: any) => { invoked++; return x; })
-      .do(null, null, () => {
+    const r = a.pipe(
+      map((x: any) => { invoked++; return x; }),
+      tap(null, null, () => {
         expect(invoked).to.equal(0);
-      });
+      })
+    );
 
     expectObservable(r).toBe(expected);
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -115,7 +106,7 @@ describe('Observable.prototype.map', () => {
     const asubs =    '^     !     ';
     const expected = '--x--y-     ';
 
-    const r = a.map(addDrama);
+    const r = a.pipe(map(addDrama));
 
     expectObservable(r, unsub).toBe(expected, {x: '1!', y: '2!'});
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -128,12 +119,15 @@ describe('Observable.prototype.map', () => {
     const values = {a: 5, b: 14, c: 23, d: 32};
 
     let invoked = 0;
-    const r = a.map((x: string, index: number) => {
-      invoked++;
-      return (parseInt(x) + 1) + (index * 10);
-    }).do(null, null, () => {
-      expect(invoked).to.equal(4);
-    });
+    const r = a.pipe(
+      map((x: string, index: number) => {
+        invoked++;
+        return (parseInt(x) + 1) + (index * 10);
+      }),
+      tap(null, null, () => {
+        expect(invoked).to.equal(4);
+      })
+    );
 
     expectObservable(r).toBe(expected, values);
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -146,12 +140,15 @@ describe('Observable.prototype.map', () => {
     const values = {a: 5, b: 14, c: 23, d: 32};
 
     let invoked = 0;
-    const r = a.map((x: string, index: number) => {
-      invoked++;
-      return (parseInt(x) + 1) + (index * 10);
-    }).do(null, null, () => {
-      expect(invoked).to.equal(4);
-    });
+    const r = a.pipe(
+      map((x: string, index: number) => {
+        invoked++;
+        return (parseInt(x) + 1) + (index * 10);
+      }),
+      tap(null, null, () => {
+        expect(invoked).to.equal(4);
+      })
+    );
 
     expectObservable(r).toBe(expected, values);
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -164,12 +161,15 @@ describe('Observable.prototype.map', () => {
     const values = {a: 5, b: 14, c: 23, d: 32};
 
     let invoked = 0;
-    const r = a.map((x: string, index: number) => {
-      invoked++;
-      return (parseInt(x) + 1) + (index * 10);
-    }).do(null, null, () => {
-      expect(invoked).to.equal(4);
-    });
+    const r = a.pipe(
+      map((x: string, index: number) => {
+        invoked++;
+        return (parseInt(x) + 1) + (index * 10);
+      }),
+      tap(null, null, () => {
+        expect(invoked).to.equal(4);
+      })
+    );
 
     expectObservable(r).toBe(expected, values, 'too bad');
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -181,17 +181,14 @@ describe('Observable.prototype.map', () => {
     const expected = '--a--b---c----d--|';
     const values = {a: 5, b: 14, c: 23, d: 32};
 
-    let invoked = 0;
-    const foo = 42;
+    const foo = {
+      value: 42
+    };
     const r = a
-      .map(function (x: string, index: number) {
-        invoked++;
+      .pipe(map(function (this: typeof foo, x: string, index: number) {
         expect(this).to.equal(foo);
         return (parseInt(x) + 1) + (index * 10);
-      }, 42)
-      .do(null, null, () => {
-        expect(invoked).to.equal(4);
-      });
+      }, foo));
 
     expectObservable(r).toBe(expected, values);
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -205,13 +202,14 @@ describe('Observable.prototype.map', () => {
 
     let invoked1 = 0;
     let invoked2 = 0;
-    const r = a
-      .map((x: string) => { invoked1++; return parseInt(x) * 2; })
-      .map((x: number) => { invoked2++; return x / 2; })
-      .do(null, null, () => {
+    const r = a.pipe(
+      map((x: string) => { invoked1++; return parseInt(x) * 2; }),
+      map((x: number) => { invoked2++; return x / 2; }),
+      tap(null, null, () => {
         expect(invoked1).to.equal(7);
         expect(invoked2).to.equal(7);
-      });
+      })
+    );
 
     expectObservable(r).toBe(expected, values);
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -223,16 +221,17 @@ describe('Observable.prototype.map', () => {
     const expected = '--a--b--c--d--|';
     const values = {a: 11, b: 14, c: 17, d: 20};
 
-    function Filterer() {
-      this.selector1 = (x: string) => parseInt(x) + 2;
-      this.selector2 = (x: string) => parseInt(x) * 3;
+    class Filterer {
+      selector1 = (x: string) => parseInt(x) + 2;
+      selector2 = (x: string) => parseInt(x) * 3;
     }
     const filterer = new Filterer();
 
-    const r = a
-      .map(function (x) { return this.selector1(x); }, filterer)
-      .map(function (x) { return this.selector2(x); }, filterer)
-      .map(function (x) { return this.selector1(x); }, filterer);
+    const r = a.pipe(
+      map(function (this: any, x) { return this.selector1(x); }, filterer),
+      map(function (this: any, x) { return this.selector2(x); }, filterer),
+      map(function (this: any, x) { return this.selector1(x); }, filterer)
+    );
 
     expectObservable(r).toBe(expected, values);
     expectSubscriptions(a.subscriptions).toBe(asubs);
@@ -244,10 +243,11 @@ describe('Observable.prototype.map', () => {
     const asubs =    '^     !     ';
     const expected = '--x--y-     ';
 
-    const r = a
-      .mergeMap((x: string) => Observable.of(x))
-      .map(addDrama)
-      .mergeMap((x: string) => Observable.of(x));
+    const r = a.pipe(
+      mergeMap((x: string) => of(x)),
+      map(addDrama),
+      mergeMap((x: string) => of(x))
+    );
 
     expectObservable(r, unsub).toBe(expected, {x: '1!', y: '2!'});
     expectSubscriptions(a.subscriptions).toBe(asubs);

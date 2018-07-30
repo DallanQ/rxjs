@@ -1,3 +1,4 @@
+
 function getTagValue(tag, tagName) {
   var unknownTags = tag.unknown;
   if (!unknownTags) {
@@ -17,7 +18,7 @@ function getLongname(ev, name) {
     return t.name === name;
   });
   if (index === -1) {
-    throw new Error('Could not find longname for unknown tag named "' + name +
+    throw new Error('could not find longname for unknown tag named "' + name +
       '"');
   } else {
     return ev.data.tag[index].longname;
@@ -47,9 +48,9 @@ exports.onHandleTag = function onHandleTag(ev) {
       delete tag.importStyle;
     }
     if (isHidden) {
-      ev.data.tag[i] = {name: '', longname: ''};
-      ev.data.tag[i]['export'] = false;
-    } else if (owner) {
+      ev.data.tag[i].builtinExternal = true;
+    }
+    if (owner && owner === 'Observable') {
       var ownerLongname = getLongname(ev, owner);
       tag.kind = 'method';
       tag.static = false;
@@ -61,4 +62,5 @@ exports.onHandleTag = function onHandleTag(ev) {
       delete tag.importStyle;
     }
   }
+  return ev;
 };

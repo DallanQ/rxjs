@@ -1,20 +1,24 @@
-import {expect} from 'chai';
-import * as Rx from '../../dist/cjs/Rx';
-
-declare const __root__: any;
-const Observable = Rx.Observable;
+import { expect } from 'chai';
+import { of, EMPTY, throwError, config } from 'rxjs';
 
 /** @test {toPromise} */
-describe('Observable.prototype.toPromise', () => {
+describe('Observable.toPromise', () => {
   it('should convert an Observable to a promise of its last value', (done: MochaDone) => {
-    Observable.of(1, 2, 3).toPromise(Promise).then((x: number) => {
+    of(1, 2, 3).toPromise(Promise).then((x: number) => {
       expect(x).to.equal(3);
       done();
     });
   });
 
+  it('should convert an empty Observable to a promise of undefined', (done: MochaDone) => {
+    EMPTY.toPromise(Promise).then((x) => {
+      expect(x).to.be.undefined;
+      done();
+    });
+  });
+
   it('should handle errors properly', (done: MochaDone) => {
-    Observable.throw('bad').toPromise(Promise).then(() => {
+    throwError('bad').toPromise(Promise).then(() => {
       done(new Error('should not be called'));
     }, (err: any) => {
       expect(err).to.equal('bad');
@@ -22,20 +26,16 @@ describe('Observable.prototype.toPromise', () => {
     });
   });
 
-  it('should allow for global config via Rx.config.Promise', (done: MochaDone) => {
+  it('should allow for global config via config.Promise', (done: MochaDone) => {
     let wasCalled = false;
-    __root__.Rx = {};
-    __root__.Rx.config = {};
-    __root__.Rx.config.Promise = function MyPromise(callback) {
+    config.Promise = function MyPromise(callback: Function) {
       wasCalled = true;
-      return new Promise(callback);
-    };
+      return new Promise(callback as any);
+    } as any;
 
-    Observable.of(42).toPromise().then((x: number) => {
+    of(42).toPromise().then((x: number) => {
       expect(wasCalled).to.be.true;
       expect(x).to.equal(42);
-
-      delete __root__.Rx;
       done();
     });
   });
